@@ -258,16 +258,18 @@ zzDecode64 w = (fromIntegral (w `shiftR` 1)) `xor` (negate (fromIntegral (w .&. 
 
 data TestRec = TestRec
   { field1 :: Required Tl.D1 (Last Int64)
-  , field2 :: Optional Tl.D2 (Last Int64)
+  , field2 :: Optional Tl.D2 (Last T.Text)
+  , field3 :: Optional Tl.D3 (Last Int64)
   -- , field3 :: Optional Tl.D3 (Signed Int)
   -- , field4 :: Optional Tl.D4 Double
   } deriving (Generic, Show)
 
 main :: IO ()
 main = do
-  let val1, val2 :: TestRec
-      Right val1 = runGet decodeMessage =<< unhex "089601109701"
-      Right val2 = runGet decodeMessage =<< unhex "089601"
-
+  let val1, val2, val3 :: TestRec
+      Right val1 = runGet decodeMessage =<< unhex "089601120774657374696e67"
+      Right val2 = runGet decodeMessage =<< unhex "089601189701"
+      Right val3 = runGet decodeMessage =<< unhex "089601"
   print val1
   print val2
+  print val3
