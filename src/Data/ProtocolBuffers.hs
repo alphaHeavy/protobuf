@@ -13,12 +13,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Data.ProtocolBuffers where
 
 import Control.Applicative
+import Control.Monad
+import Control.Monad.Identity
 import Data.Bits
 import Data.ByteString
 import qualified Data.ByteString as B
@@ -201,83 +204,46 @@ instance (GDecode (Rep a), Generic a) => Wire a where
   decodeWire (DelimitedField _ bs) = val where
     Right val = runGet decodeMessage bs
 
+newtype Value n f a = Value {getValue :: f a}
+  deriving (Bits, Bounded, Enum, Eq, Floating, Foldable, Fractional, Functor, Integral, Monoid, Num, Ord, Real, RealFloat, RealFrac, Traversable)
+
+instance (Show a, Tl.Nat n) => Show (Value n Maybe a) where
+  show (Value x) = "Optional " ++ show (Tl.toInt (undefined :: n)) ++ " " ++ show x
+
+instance (Show a, Tl.Nat n) => Show (Value n Identity a) where
+  show (Value (Identity x)) = "Required " ++ show (Tl.toInt (undefined :: n)) ++ " " ++ show x
+
+instance (Show a, Tl.Nat n) => Show (Value n [] a) where
+  show (Value x) = "Repeated " ++ show (Tl.toInt (undefined :: n)) ++ " " ++ show x
+
 -- field rules
-newtype Required n a = Required a
+type Optional n a = Value n Maybe a
+type Required n a = Value n Identity a
+type Repeated n a = Value n [] a
 
-deriving instance Bits a => Bits (Required n a)
-deriving instance Bounded a => Bounded (Required n a)
-deriving instance Enum a => Enum (Required n a)
-deriving instance Eq a => Eq (Required n a)
-deriving instance Floating a => Floating (Required n a)
-deriving instance Fractional a => Fractional (Required n a)
-deriving instance Integral a => Integral (Required n a)
-deriving instance Monoid a => Monoid (Required n a)
-deriving instance Num a => Num (Required n a)
-deriving instance Ord a => Ord (Required n a)
-deriving instance Real a => Real (Required n a)
-deriving instance RealFloat a => RealFloat (Required n a)
-deriving instance RealFrac a => RealFrac (Required n a)
-deriving instance Show a => Show (Required n a)
-
-newtype Optional n a = Optional a
-
-deriving instance Bits a => Bits (Optional n a)
-deriving instance Bounded a => Bounded (Optional n a)
-deriving instance Enum a => Enum (Optional n a)
-deriving instance Eq a => Eq (Optional n a)
-deriving instance Floating a => Floating (Optional n a)
-deriving instance Fractional a => Fractional (Optional n a)
-deriving instance Integral a => Integral (Optional n a)
-deriving instance Monoid a => Monoid (Optional n a)
-deriving instance Num a => Num (Optional n a)
-deriving instance Ord a => Ord (Optional n a)
-deriving instance Real a => Real (Optional n a)
-deriving instance RealFloat a => RealFloat (Optional n a)
-deriving instance RealFrac a => RealFrac (Optional n a)
-deriving instance Show a => Show (Optional n a)
-
-newtype Repeated n a = Repeated a
-
-deriving instance Bits a => Bits (Repeated n a)
-deriving instance Bounded a => Bounded (Repeated n a)
-deriving instance Enum a => Enum (Repeated n a)
-deriving instance Eq a => Eq (Repeated n a)
-deriving instance Floating a => Floating (Repeated n a)
-deriving instance Fractional a => Fractional (Repeated n a)
-deriving instance Integral a => Integral (Repeated n a)
-deriving instance Monoid a => Monoid (Repeated n a)
-deriving instance Num a => Num (Repeated n a)
-deriving instance Ord a => Ord (Repeated n a)
-deriving instance Real a => Real (Repeated n a)
-deriving instance RealFloat a => RealFloat (Repeated n a)
-deriving instance RealFrac a => RealFrac (Repeated n a)
-deriving instance Show a => Show (Repeated n a)
-
-newtype Enumeration a = Enumeration (Maybe Int) deriving (Eq, Ord, Show, Foldable, Functor, Traversable)
+newtype Enumeration a = Enumeration Int deriving (Eq, Ord, Show, Foldable, Functor, Traversable)
 
 instance Monoid (Enumeration a) where
-  mempty = Enumeration Nothing
+  mempty = Enumeration 0
   _ `mappend` x = x
 
-getEnum :: Enum a => Enumeration a -> Maybe a
-getEnum (Enumeration x) = fmap toEnum x
+class GetEnum a where
+  type GetEnumResult a :: *
+  getEnum :: a -> GetEnumResult a
 
-newtype Packed n a = Packed a
+instance Enum a => GetEnum (Value n Maybe (Enumeration a)) where
+  type GetEnumResult (Value n Maybe (Enumeration a)) = Maybe a
+  getEnum (Value (Just (Enumeration x))) = Just $ toEnum x
+  getEnum (Value Nothing) = Nothing
 
-deriving instance Bits a => Bits (Packed n a)
-deriving instance Bounded a => Bounded (Packed n a)
-deriving instance Enum a => Enum (Packed n a)
-deriving instance Eq a => Eq (Packed n a)
-deriving instance Floating a => Floating (Packed n a)
-deriving instance Fractional a => Fractional (Packed n a)
-deriving instance Integral a => Integral (Packed n a)
-deriving instance Monoid a => Monoid (Packed n a)
-deriving instance Num a => Num (Packed n a)
-deriving instance Ord a => Ord (Packed n a)
-deriving instance Real a => Real (Packed n a)
-deriving instance RealFloat a => RealFloat (Packed n a)
-deriving instance RealFrac a => RealFrac (Packed n a)
-deriving instance Show a => Show (Packed n a)
+instance Enum a => GetEnum (Value n Identity (Enumeration a)) where
+  type GetEnumResult (Value n Identity (Enumeration a)) = a
+  getEnum (Value (Identity (Enumeration x))) = toEnum x
+
+instance Enum a => GetEnum (Value n [] (Enumeration a)) where
+  type GetEnumResult (Value n [] (Enumeration a)) = [a]
+  getEnum (Value xs) = fmap f xs where
+    f (Enumeration x) = toEnum x
 
 -- Integer encoding annotations
 newtype Signed a = Signed a
@@ -301,21 +267,21 @@ class Decode (a :: *) where
 -- instance (GDecode x, GDecode y) => GDecode (x :+: y) where
   -- decode msg = do
 
-instance (Wire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Optional n a)) where
+instance (Wire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Value n Maybe a)) where
   gdecode msg =
     pure $! case HashMap.lookup (fromIntegral (Tl.toInt (undefined :: n))) msg of
-      Just val -> K1 . Optional $ foldMap decodeWire val
+      Just val -> K1 . Value $ foldMap decodeWire val
       Nothing  -> K1 mempty
 
-instance (Wire a, Tl.Nat n) => GDecode (K1 i (Repeated n [a])) where
+instance (Wire a, Tl.Nat n) => GDecode (K1 i (Value n [] a)) where
   gdecode msg = case HashMap.lookup (fromIntegral (Tl.toInt (undefined :: n))) msg of
-    Just val -> pure . K1 . Repeated . fmap decodeWire $ val
+    Just val -> pure . K1 . Value . fmap decodeWire $ val
     Nothing  -> pure $ K1 mempty
 
-instance (Wire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Required n a)) where
+instance (Wire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Value n Identity a)) where
   gdecode msg =
     case HashMap.lookup (fromIntegral (Tl.toInt (undefined :: n))) msg of
-      Just val -> pure . K1 . Required $ foldMap decodeWire val
+      Just val -> pure . K1 . Value . Identity $ foldMap decodeWire val
       Nothing  -> fail "required field not found"
 
 {-
@@ -338,15 +304,14 @@ instance GEncode a => GEncode (M1 i c a) where
   gencode = gencode . unM1
 
 
-instance (Wire a, Monoid a, Tl.Nat n) => GEncode (K1 i (Optional n a)) where
-  gencode msg = let (Optional opt) = unK1 msg
-                in encodeWire (fromIntegral $ Tl.toInt (undefined :: n)) opt
+instance (Wire a, Monoid a, Tl.Nat n) => GEncode (K1 i (Value n Maybe a)) where
+  gencode (K1 (Value opt)) = encodeWire (fromIntegral $ Tl.toInt (undefined :: n)) opt
 
-instance (Wire a, Tl.Nat n) => GEncode (K1 i (Repeated n [a])) where
-  gencode (K1 (Repeated opt)) = traverse_ (encodeWire (fromIntegral $ Tl.toInt (undefined :: n))) opt
+instance (Wire a, Tl.Nat n) => GEncode (K1 i (Value n [] a)) where
+  gencode (K1 (Value opt)) = traverse_ (encodeWire (fromIntegral $ Tl.toInt (undefined :: n))) opt
 
-instance (Wire a, Monoid a, Tl.Nat n) => GEncode (K1 i (Required n a)) where
-  gencode (K1 (Required val)) = encodeWire (fromIntegral $ Tl.toInt (undefined :: n)) val
+instance (Wire a, Monoid a, Tl.Nat n) => GEncode (K1 i (Value n Identity a)) where
+  gencode (K1 (Value (Identity val))) = encodeWire (fromIntegral $ Tl.toInt (undefined :: n)) val
 
 instance (GEncode a, GEncode b) => GEncode (a :*: b) where
   gencode (x :*: y) = gencode x >> gencode y
