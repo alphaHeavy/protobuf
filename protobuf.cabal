@@ -8,8 +8,8 @@ license:             BSD3
 license-file:        LICENSE
 author:              Steve Severance <sseverance@alphaheavy.com>
 maintainer:          Steve Severance <sseverance@alphaheavy.com>
-homepage:            http://github.com/alphaHeavy/protobuf
-bug-reports:         http://github.com/alphaHeavy/protobuf/issues
+homepage:            https://github.com/alphaHeavy/protobuf
+bug-reports:         https://github.com/alphaHeavy/protobuf/issues
 category:            Data, Protocol
 
 build-type:          Simple
