@@ -253,24 +253,9 @@ deriving instance RealFloat a => RealFloat (Repeated n a)
 deriving instance RealFrac a => RealFrac (Repeated n a)
 deriving instance Show a => Show (Repeated n a)
 
-newtype Enumeration n a = Enumeration (Maybe Int) deriving (Eq, Ord, Show, Foldable, Functor, Traversable)
+newtype Enumeration a = Enumeration (Maybe Int) deriving (Eq, Ord, Show, Foldable, Functor, Traversable)
 
-deriving instance Bits a => Bits (Enumeration n a)
-deriving instance Bounded a => Bounded (Enumeration n a)
-deriving instance Enum a => Enum (Enumeration n a)
-deriving instance Eq a => Eq (Enumeration n a)
-deriving instance Floating a => Floating (Enumeration n a)
-deriving instance Fractional a => Fractional (Enumeration n a)
-deriving instance Integral a => Integral (Enumeration n a)
-deriving instance Monoid a => Monoid (Enumeration n a)
-deriving instance Num a => Num (Enumeration n a)
-deriving instance Ord a => Ord (Enumeration n a)
-deriving instance Real a => Real (Enumeration n a)
-deriving instance RealFloat a => RealFloat (Enumeration n a)
-deriving instance RealFrac a => RealFrac (Enumeration n a)
-deriving instance Show a => Show (Enumeration n a)
-
-instance Monoid (Enumeration n a) where
+instance Monoid (Enumeration a) where
   mempty = Enumeration Nothing
   _ `mappend` x = x
 
@@ -352,11 +337,6 @@ instance (Wire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Optional n a)) where
 instance (Wire a, Tl.Nat n) => GDecode (K1 i (Repeated n [a])) where
   gdecode msg = case HashMap.lookup (fromIntegral (Tl.toInt (undefined :: n))) msg of
     Just val -> pure . K1 . Repeated . fmap decodeWire $ val
-    Nothing  -> pure $ K1 mempty
-
-instance (Enum a, Tl.Nat n) => GDecode (K1 i (Enumeration n a)) where
-  gdecode msg = case HashMap.lookup (fromIntegral (Tl.toInt (undefined :: n))) msg of
-    Just val -> pure . K1 . Enumeration . getEnum . fmap decodeWire $ val
     Nothing  -> pure $ K1 mempty
 
 instance (Wire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Required n a)) where
