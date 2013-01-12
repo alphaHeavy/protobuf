@@ -254,7 +254,7 @@ newtype Fixed a = Fixed a
 
 
 class GDecode (f :: * -> *) where
-  gdecode :: (Applicative m, Monad m) => HashMap Tag [Field] -> m (f a)
+  gdecode :: (Applicative m, Monad m, MonadPlus m) => HashMap Tag [Field] -> m (f a)
 
 instance GDecode a => GDecode (M1 i c a) where
   gdecode = fmap M1 . gdecode
@@ -282,7 +282,7 @@ instance (Wire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Value n Identity a)) whe
   gdecode msg =
     case HashMap.lookup (fromIntegral (Tl.toInt (undefined :: n))) msg of
       Just val -> pure . K1 . Value . Identity $ foldMap decodeWire val
-      Nothing  -> fail "required field not found"
+      Nothing  -> mzero
 
 {-
 instance (Wire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Packed n a)) where
