@@ -281,38 +281,11 @@ deriving instance Show a => Show (Packed n a)
 
 -- Integer encoding annotations
 newtype Signed a = Signed a
-
-deriving instance Bits a => Bits (Signed a)
-deriving instance Bounded a => Bounded (Signed a)
-deriving instance Enum a => Enum (Signed a)
-deriving instance Eq a => Eq (Signed a)
-deriving instance Floating a => Floating (Signed a)
-deriving instance Fractional a => Fractional (Signed a)
-deriving instance Integral a => Integral (Signed a)
-deriving instance Monoid a => Monoid (Signed a)
-deriving instance Num a => Num (Signed a)
-deriving instance Ord a => Ord (Signed a)
-deriving instance Real a => Real (Signed a)
-deriving instance RealFloat a => RealFloat (Signed a)
-deriving instance RealFrac a => RealFrac (Signed a)
-deriving instance Show a => Show (Signed a)
+  deriving (Bits, Bounded, Enum, Eq, Floating, Foldable, Fractional, Functor, Integral, Monoid, Num, Ord, Real, RealFloat, RealFrac, Show, Traversable)
 
 newtype Fixed a = Fixed a
+  deriving (Bits, Bounded, Enum, Eq, Floating, Foldable, Fractional, Functor, Integral, Monoid, Num, Ord, Real, RealFloat, RealFrac, Show, Traversable)
 
-deriving instance Bits a => Bits (Fixed a)
-deriving instance Bounded a => Bounded (Fixed a)
-deriving instance Enum a => Enum (Fixed a)
-deriving instance Eq a => Eq (Fixed a)
-deriving instance Floating a => Floating (Fixed a)
-deriving instance Fractional a => Fractional (Fixed a)
-deriving instance Integral a => Integral (Fixed a)
-deriving instance Monoid a => Monoid (Fixed a)
-deriving instance Num a => Num (Fixed a)
-deriving instance Ord a => Ord (Fixed a)
-deriving instance Real a => Real (Fixed a)
-deriving instance RealFloat a => RealFloat (Fixed a)
-deriving instance RealFrac a => RealFrac (Fixed a)
-deriving instance Show a => Show (Fixed a)
 
 class GDecode (f :: * -> *) where
   gdecode :: (Applicative m, Monad m) => HashMap Tag [Field] -> m (f a)
