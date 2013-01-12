@@ -1,6 +1,9 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
@@ -28,6 +31,7 @@ import Data.Serialize.IEEE754
 import Data.Serialize.Put
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
+import Data.Traversable
 import qualified Data.TypeLevel as Tl
 import Data.Word
 import Unsafe.Coerce
@@ -249,7 +253,7 @@ deriving instance RealFloat a => RealFloat (Repeated n a)
 deriving instance RealFrac a => RealFrac (Repeated n a)
 deriving instance Show a => Show (Repeated n a)
 
-newtype Enumeration n a = Enumeration a
+newtype Enumeration n a = Enumeration (Maybe Int) deriving (Eq, Ord, Show, Foldable, Functor, Traversable)
 
 deriving instance Bits a => Bits (Enumeration n a)
 deriving instance Bounded a => Bounded (Enumeration n a)
@@ -265,6 +269,13 @@ deriving instance Real a => Real (Enumeration n a)
 deriving instance RealFloat a => RealFloat (Enumeration n a)
 deriving instance RealFrac a => RealFrac (Enumeration n a)
 deriving instance Show a => Show (Enumeration n a)
+
+instance Monoid (Enumeration n a) where
+  mempty = Enumeration Nothing
+  _ `mappend` x = x
+
+getEnum :: Enum a => Enumeration a -> Maybe a
+getEnum (Enumeration x) = fmap toEnum x
 
 newtype Packed n a = Packed a
  
@@ -345,7 +356,7 @@ instance (Wire a, Tl.Nat n) => GDecode (K1 i (Repeated n [a])) where
 
 instance (Enum a, Tl.Nat n) => GDecode (K1 i (Enumeration n a)) where
   gdecode msg = case HashMap.lookup (fromIntegral (Tl.toInt (undefined :: n))) msg of
-    Just val -> pure . K1 . Enumeration . toEnum . fromIntegral . fmap decodeWire $ val
+    Just val -> pure . K1 . Enumeration . getEnum . fmap decodeWire $ val
     Nothing  -> pure $ K1 mempty
 
 instance (Wire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Required n a)) where
