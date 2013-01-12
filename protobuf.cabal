@@ -30,6 +30,7 @@ library
     bytestring        >= 0.9.1  && < 0.10,
     cereal,
     ghc-prim,
+    mtl,
     text,
     type-level,
     unordered-containers
