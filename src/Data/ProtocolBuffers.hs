@@ -326,7 +326,7 @@ zzDecode32 w = (fromIntegral (w `shiftR` 1)) `xor` (negate (fromIntegral (w .&. 
 zzDecode64 :: Word64 -> Int64
 zzDecode64 w = (fromIntegral (w `shiftR` 1)) `xor` (negate (fromIntegral (w .&. 1)))
 
-decodeLengthPrefixedMessage :: (GDecode (Rep a), Generic a) => Get a
-decodeLengthPrefixedMessage = do
+decodeLengthPrefixed :: Decode a => Get a
+decodeLengthPrefixed = do
   len <- getWord32le
-  isolate (fromIntegral len) decodeMessage
+  isolate (fromIntegral len) decode
