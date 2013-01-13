@@ -360,5 +360,5 @@ zzDecode64 w = (fromIntegral (w `shiftR` 1)) `xor` (negate (fromIntegral (w .&. 
 
 decodeLengthPrefixed :: Decode a => Get a
 decodeLengthPrefixed = do
-  len <- getWord32le
+  len :: Int32 <- getVarInt
   isolate (fromIntegral len) decode
