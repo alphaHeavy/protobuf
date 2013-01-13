@@ -250,10 +250,12 @@ type Optional n a = Value n Maybe a
 type Required n a = Value n Identity a
 type Repeated n a = Value n [] a
 
-newtype Enumeration a = Enumeration Int deriving (Eq, Ord, Show, Foldable, Functor, Traversable)
+newtype Enumeration a = Enumeration Int deriving (Eq, Ord, Show)
 
 instance Monoid (Enumeration a) where
-  mempty = Enumeration 0
+  -- error case is handled by getEnum but we're exposing the instance :-(
+  -- really should be a Semigroup instance... if we want a semigroup dependency
+  mempty = Enumeration (error "Empty Enumeration")
   _ `mappend` x = x
 
 class GetEnum a where
