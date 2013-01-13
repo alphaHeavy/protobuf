@@ -334,7 +334,7 @@ instance (GDecode a, GDecode b) => GDecode (a :*: b) where
   gdecode msg = liftA2 (:*:) (gdecode msg) (gdecode msg)
 
 instance (GDecode x, GDecode y) => GDecode (x :+: y) where
-  gdecode msg = fmap L1 (gdecode msg) `mplus` fmap R1 (gdecode msg)
+  gdecode msg = L1 <$> gdecode msg <|> R1 <$> gdecode msg
 
 class GEncode (f :: * -> *) where
   gencode :: f a -> Put
