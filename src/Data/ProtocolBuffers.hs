@@ -248,6 +248,11 @@ type Repeated n a = Value n [] a
 
 newtype Enumeration a = Enumeration Int deriving (Eq, Ord, Show)
 
+instance Wire (Enumeration a) where
+  decodeWire = do
+    val <- decodeWire
+    return $ Enumeration (fromIntegral (val :: Int32))
+
 instance Monoid (Enumeration a) where
   -- error case is handled by getEnum but we're exposing the instance :-(
   -- really should be a Semigroup instance... if we want a semigroup dependency
