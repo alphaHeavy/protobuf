@@ -135,10 +135,12 @@ decodeMessage = fmap to (gdecode =<< go HashMap.empty) where
 --encodeMessage = gencode . from
 
 class Wire a where
-  decodeWire :: Field -> a
-  default decodeWire :: (GDecode (Rep a), Generic a) => Field -> a
-  decodeWire (DelimitedField _ bs) = val where
-    Right val = runGet decodeMessage bs
+  decodeWire :: Field -> Get a
+  default decodeWire :: (GDecode (Rep a), Generic a) => Field -> Get a
+  decodeWire (DelimitedField _ bs) =
+    case runGet decodeMessage bs of
+      Right val -> return val
+      Left _    -> mzero
 
   encodeWire :: Tag -> a -> Put
   sizeWire   :: a -> Int
@@ -149,68 +151,71 @@ deriving instance Wire a => Wire (Product a)
 deriving instance Wire a => Wire (Sum a)
 
 instance Wire a => Wire (Maybe a) where
-  decodeWire = Just . decodeWire
+  decodeWire = fmap Just . decodeWire
   encodeWire t (Just a) = encodeWire t a
   encodeWire t Nothing  = return ()
 
 instance Wire Int32 where
-  decodeWire (VarintField  _ val) = fromIntegral val
+  decodeWire (VarintField  _ val) = return $ fromIntegral val
   encodeWire t val = putField t 0 >> putVarSInt val
 
 instance Wire Int64 where
-  decodeWire (VarintField  _ val) = fromIntegral val
+  decodeWire (VarintField  _ val) = return $ fromIntegral val
   encodeWire t val = putField t 0 >> putVarSInt val
 
 instance Wire Word32 where
-  decodeWire (VarintField  _ val) = fromIntegral val
+  decodeWire (VarintField  _ val) = return $ fromIntegral val
   encodeWire t val = putField t 0 >> putVarUInt val
 
 instance Wire Word64 where
-  decodeWire (VarintField  _ val) = val
+  decodeWire (VarintField  _ val) = return val
   encodeWire t val = putField t 0 >> putVarUInt val
 
 instance Wire (Signed Int32) where
-  decodeWire (VarintField  _ val) = Signed (zzDecode32 (fromIntegral val))
+  decodeWire (VarintField  _ val) = return $ Signed (zzDecode32 (fromIntegral val))
   encodeWire t (Signed val) = putField t 0 >> (putVarSInt $ zzEncode32 val)
 
 instance Wire (Signed Int64) where
-  decodeWire (VarintField  _ val) = Signed (zzDecode64 (fromIntegral val))
+  decodeWire (VarintField  _ val) = return $ Signed (zzDecode64 (fromIntegral val))
   encodeWire t (Signed val) = putField t 0 >> (putVarSInt $ zzEncode64 val)
 
 instance Wire (Fixed Int32) where
-  decodeWire (Fixed32Field _ val) = Fixed (fromIntegral val)
+  decodeWire (Fixed32Field _ val) = return $ Fixed (fromIntegral val)
   encodeWire t (Fixed val) = putField t 5 >> (putWord32le $ fromIntegral val)
 
 instance Wire (Fixed Int64) where
-  decodeWire (Fixed64Field _ val) = Fixed (fromIntegral val)
+  decodeWire (Fixed64Field _ val) = return $ Fixed (fromIntegral val)
   encodeWire t (Fixed val) = putField t 5 >> (putWord64le $ fromIntegral val)
 
 instance Wire (Fixed Word32) where
-  decodeWire (Fixed32Field _ val) = Fixed val
+  decodeWire (Fixed32Field _ val) = return $ Fixed val
   encodeWire t (Fixed val) = putField t 5 >> putWord32le val
 
 instance Wire (Fixed Word64) where
-  decodeWire (Fixed64Field _ val) = Fixed val
+  decodeWire (Fixed64Field _ val) = return $ Fixed val
   encodeWire t (Fixed val) = putField t 1 >> putWord64le val
 
 instance Wire Bool where
-  decodeWire (VarintField _ val) = val /= 0
+  decodeWire (VarintField _ val) = return $ val /= 0
   encodeWire t val = putField t 0 >> (putVarUInt $ if val == False then (0 :: Int32) else 1)
 
 instance Wire Float where
-  decodeWire (Fixed32Field _ val) = wordToFloat val
+  decodeWire (Fixed32Field _ val) = return $ wordToFloat val
   encodeWire t val = putField t 5 >> putFloat32le val
 
 instance Wire Double where
-  decodeWire (Fixed64Field _ val) = wordToDouble val
+  decodeWire (Fixed64Field _ val) = return $ wordToDouble val
   encodeWire t val = putField t 1 >> putFloat64le val
 
 instance Wire ByteString where
-  decodeWire (DelimitedField _ bs) = bs
+  decodeWire (DelimitedField _ bs) = return bs
   encodeWire t val = putField t 2 >> (putVarUInt $ B.length val) >> (putByteString val)
 
 instance Wire T.Text where
-  decodeWire (DelimitedField _ bs) = T.decodeUtf8 bs
+  decodeWire (DelimitedField _ bs) =
+    case T.decodeUtf8' bs of
+      Right val -> return val
+      Left _    -> mzero
   encodeWire t val = putField t 2 >> (putVarUInt $ T.length val) >> (putByteString $ T.encodeUtf8 val)
 
 newtype Value n f a = Value (f a)
@@ -249,8 +254,8 @@ type Repeated n a = Value n [] a
 newtype Enumeration a = Enumeration Int deriving (Eq, Ord, Show)
 
 instance Wire (Enumeration a) where
-  decodeWire = do
-    val <- decodeWire
+  decodeWire f = do
+    val <- decodeWire f
     return $ Enumeration (fromIntegral (val :: Int32))
 
 instance Monoid (Enumeration a) where
@@ -296,22 +301,26 @@ class Decode (a :: *) where
   default decode :: (Generic a, GDecode (Rep a)) => Get a
   decode = decodeMessage
 
+foldMapM :: (Monad m, Foldable t, Monoid b) => (a -> m b) -> t a -> m b
+foldMapM f = foldlM go mempty where
+  go !acc el = mappend acc `liftM` f el
+
 instance (Wire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Value n Maybe a)) where
   gdecode msg =
-    pure $! case HashMap.lookup (fromIntegral (Tl.toInt (undefined :: n))) msg of
-      Just val -> K1 . Value $ foldMap decodeWire val
-      Nothing  -> K1 mempty
+    case HashMap.lookup (fromIntegral (Tl.toInt (undefined :: n))) msg of
+      Just val -> K1 . Value <$> foldMapM decodeWire val
+      Nothing  -> pure $ K1 mempty
 
 instance (Wire a, Tl.Nat n) => GDecode (K1 i (Value n [] a)) where
   gdecode msg =
-    pure $! case HashMap.lookup (fromIntegral (Tl.toInt (undefined :: n))) msg of
-      Just val -> K1 . Value . fmap decodeWire $ val
-      Nothing  -> K1 mempty
+    case HashMap.lookup (fromIntegral (Tl.toInt (undefined :: n))) msg of
+      Just val -> K1 . Value <$> Data.Traversable.mapM decodeWire val
+      Nothing  -> pure $ K1 mempty
 
 instance (Wire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Value n Identity a)) where
   gdecode msg =
     case HashMap.lookup (fromIntegral (Tl.toInt (undefined :: n))) msg of
-      Just val -> pure . K1 . Value . Identity $ foldMap decodeWire val
+      Just val -> K1 . Value . Identity <$> foldMapM decodeWire val
       Nothing  -> mzero
 
 {-
