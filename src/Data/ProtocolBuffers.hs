@@ -20,6 +20,7 @@
 module Data.ProtocolBuffers
   ( Encode(..)
   , Decode(..)
+  , decodeLengthPrefixed
   , Wire(..)
   , Value
   , Required
