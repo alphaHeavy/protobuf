@@ -197,7 +197,7 @@ instance Wire (Fixed Word64) where
 
 instance Wire Bool where
   decodeWire (VarintField _ val) = return $ val /= 0
-  encodeWire t val = putField t 0 >> (putVarUInt $ if val == False then (0 :: Int32) else 1)
+  encodeWire t val = putField t 0 >> putVarUInt (if val == False then (0 :: Int32) else 1)
 
 instance Wire Float where
   decodeWire (Fixed32Field _ val) = return $ wordToFloat val
@@ -209,14 +209,14 @@ instance Wire Double where
 
 instance Wire ByteString where
   decodeWire (DelimitedField _ bs) = return bs
-  encodeWire t val = putField t 2 >> (putVarUInt $ B.length val) >> (putByteString val)
+  encodeWire t val = putField t 2 >> putVarUInt (B.length val) >> putByteString val
 
 instance Wire T.Text where
   decodeWire (DelimitedField _ bs) =
     case T.decodeUtf8' bs of
       Right val -> return val
       Left _    -> mzero
-  encodeWire t val = putField t 2 >> (putVarUInt $ T.length val) >> (putByteString $ T.encodeUtf8 val)
+  encodeWire t val = putField t 2 >> putVarUInt (T.length val) >> putByteString (T.encodeUtf8 val)
 
 newtype Value n f a = Value (f a)
   deriving (Bits, Bounded, Enum, Eq, Floating, Foldable, Fractional, Functor, Integral, Monoid, Num, Ord, Real, RealFloat, RealFrac, Traversable)
@@ -307,19 +307,22 @@ foldMapM f = foldlM go mempty where
 
 instance (Wire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Value n Maybe a)) where
   gdecode msg =
-    case HashMap.lookup (fromIntegral (Tl.toInt (undefined :: n))) msg of
+    let tag = fromIntegral $ Tl.toInt (undefined :: n)
+    in case HashMap.lookup tag msg of
       Just val -> K1 . Value <$> foldMapM decodeWire val
       Nothing  -> pure $ K1 mempty
 
 instance (Wire a, Tl.Nat n) => GDecode (K1 i (Value n [] a)) where
   gdecode msg =
-    case HashMap.lookup (fromIntegral (Tl.toInt (undefined :: n))) msg of
+    let tag = fromIntegral $ Tl.toInt (undefined :: n)
+    in case HashMap.lookup tag msg of
       Just val -> K1 . Value <$> Data.Traversable.mapM decodeWire val
       Nothing  -> pure $ K1 mempty
 
 instance (Wire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Value n Identity a)) where
   gdecode msg =
-    case HashMap.lookup (fromIntegral (Tl.toInt (undefined :: n))) msg of
+    let tag = fromIntegral $ Tl.toInt (undefined :: n)
+    in case HashMap.lookup tag msg of
       Just val -> K1 . Value . Identity <$> foldMapM decodeWire val
       Nothing  -> mzero
 
