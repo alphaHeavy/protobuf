@@ -336,14 +336,8 @@ instance GEncode a => GEncode (M1 i c a) where
   gencode = gencode . unM1
 
 
-instance (Wire a, Monoid a, Tl.Nat n) => GEncode (K1 i (Value n Maybe a)) where
-  gencode (K1 (Value opt)) = encodeWire (fromIntegral $ Tl.toInt (undefined :: n)) opt
-
-instance (Wire a, Tl.Nat n) => GEncode (K1 i (Value n [] a)) where
+instance (Wire a, Tl.Nat n, Foldable f) => GEncode (K1 i (Value n f a)) where
   gencode (K1 (Value opt)) = traverse_ (encodeWire (fromIntegral $ Tl.toInt (undefined :: n))) opt
-
-instance (Wire a, Monoid a, Tl.Nat n) => GEncode (K1 i (Value n Identity a)) where
-  gencode (K1 (Value (Identity val))) = encodeWire (fromIntegral $ Tl.toInt (undefined :: n)) val
 
 instance (GEncode a, GEncode b) => GEncode (a :*: b) where
   gencode (x :*: y) = gencode x >> gencode y
