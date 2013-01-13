@@ -286,7 +286,7 @@ newtype Fixed a = Fixed a
 
 
 class GDecode (f :: * -> *) where
-  gdecode :: (Applicative m, Monad m, MonadPlus m) => HashMap Tag [Field] -> m (f a)
+  gdecode :: HashMap Tag [Field] -> Get (f a)
 
 instance GDecode a => GDecode (M1 i c a) where
   gdecode = fmap M1 . gdecode
