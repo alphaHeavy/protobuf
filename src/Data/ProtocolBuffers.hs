@@ -5,7 +5,6 @@
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -29,6 +28,7 @@ module Data.ProtocolBuffers
   ) where
 
 import Control.Applicative
+import Control.DeepSeq (NFData)
 import Control.Monad
 import Control.Monad.Identity
 import Data.Bits
@@ -52,15 +52,14 @@ import GHC.Generics
 
 type Tag = Word32
 
-data Field where
-  VarintField    :: Tag -> Word64 -> Field
-  Fixed64Field   :: Tag -> Word64 -> Field
-  DelimitedField :: Tag -> ByteString -> Field
-  StartField     :: Tag -> Field
-  EndField       :: Tag -> Field
-  Fixed32Field   :: Tag -> Word32 -> Field
-
-  deriving Show
+data Field
+  = VarintField    {-# UNPACK #-} !Tag {-# UNPACK #-} !Word64
+  | Fixed64Field   {-# UNPACK #-} !Tag {-# UNPACK #-} !Word64
+  | DelimitedField {-# UNPACK #-} !Tag !ByteString
+  | StartField     {-# UNPACK #-} !Tag
+  | EndField       {-# UNPACK #-} !Tag
+  | Fixed32Field   {-# UNPACK #-} !Tag {-# UNPACK #-} !Word32
+    deriving Show
 
 getVarintPrefixedBS :: Get ByteString
 getVarintPrefixedBS = do
@@ -135,10 +134,12 @@ decodeMessage = fmap to (gdecode =<< go HashMap.empty) where
 --encodeMessage = gencode . from
 
 class Wire a where
-  decodeWire :: Field -> a
-  default decodeWire :: (GDecode (Rep a), Generic a) => Field -> a
-  decodeWire (DelimitedField _ bs) = val where
-    Right val = runGet decodeMessage bs
+  decodeWire :: Field -> Get a
+  default decodeWire :: (GDecode (Rep a), Generic a) => Field -> Get a
+  decodeWire (DelimitedField _ bs) =
+    case runGet decodeMessage bs of
+      Right val -> return val
+      Left err  -> fail err
 
   encodeWire :: Tag -> a -> Put
   sizeWire   :: a -> Int
@@ -149,72 +150,75 @@ deriving instance Wire a => Wire (Product a)
 deriving instance Wire a => Wire (Sum a)
 
 instance Wire a => Wire (Maybe a) where
-  decodeWire = Just . decodeWire
+  decodeWire = fmap Just . decodeWire
   encodeWire t (Just a) = encodeWire t a
   encodeWire t Nothing  = return ()
 
 instance Wire Int32 where
-  decodeWire (VarintField  _ val) = fromIntegral val
+  decodeWire (VarintField  _ val) = return $ fromIntegral val
   encodeWire t val = putField t 0 >> putVarSInt val
 
 instance Wire Int64 where
-  decodeWire (VarintField  _ val) = fromIntegral val
+  decodeWire (VarintField  _ val) = return $ fromIntegral val
   encodeWire t val = putField t 0 >> putVarSInt val
 
 instance Wire Word32 where
-  decodeWire (VarintField  _ val) = fromIntegral val
+  decodeWire (VarintField  _ val) = return $ fromIntegral val
   encodeWire t val = putField t 0 >> putVarUInt val
 
 instance Wire Word64 where
-  decodeWire (VarintField  _ val) = val
+  decodeWire (VarintField  _ val) = return val
   encodeWire t val = putField t 0 >> putVarUInt val
 
 instance Wire (Signed Int32) where
-  decodeWire (VarintField  _ val) = Signed (zzDecode32 (fromIntegral val))
+  decodeWire (VarintField  _ val) = return $ Signed (zzDecode32 (fromIntegral val))
   encodeWire t (Signed val) = putField t 0 >> (putVarSInt $ zzEncode32 val)
 
 instance Wire (Signed Int64) where
-  decodeWire (VarintField  _ val) = Signed (zzDecode64 (fromIntegral val))
+  decodeWire (VarintField  _ val) = return $ Signed (zzDecode64 (fromIntegral val))
   encodeWire t (Signed val) = putField t 0 >> (putVarSInt $ zzEncode64 val)
 
 instance Wire (Fixed Int32) where
-  decodeWire (Fixed32Field _ val) = Fixed (fromIntegral val)
+  decodeWire (Fixed32Field _ val) = return $ Fixed (fromIntegral val)
   encodeWire t (Fixed val) = putField t 5 >> (putWord32le $ fromIntegral val)
 
 instance Wire (Fixed Int64) where
-  decodeWire (Fixed64Field _ val) = Fixed (fromIntegral val)
+  decodeWire (Fixed64Field _ val) = return $ Fixed (fromIntegral val)
   encodeWire t (Fixed val) = putField t 5 >> (putWord64le $ fromIntegral val)
 
 instance Wire (Fixed Word32) where
-  decodeWire (Fixed32Field _ val) = Fixed val
+  decodeWire (Fixed32Field _ val) = return $ Fixed val
   encodeWire t (Fixed val) = putField t 5 >> putWord32le val
 
 instance Wire (Fixed Word64) where
-  decodeWire (Fixed64Field _ val) = Fixed val
+  decodeWire (Fixed64Field _ val) = return $ Fixed val
   encodeWire t (Fixed val) = putField t 1 >> putWord64le val
 
 instance Wire Bool where
-  decodeWire (VarintField _ val) = val /= 0
-  encodeWire t val = putField t 0 >> (putVarUInt $ if val == False then (0 :: Int32) else 1)
+  decodeWire (VarintField _ val) = return $ val /= 0
+  encodeWire t val = putField t 0 >> putVarUInt (if val == False then (0 :: Int32) else 1)
 
 instance Wire Float where
-  decodeWire (Fixed32Field _ val) = wordToFloat val
+  decodeWire (Fixed32Field _ val) = return $ wordToFloat val
   encodeWire t val = putField t 5 >> putFloat32le val
 
 instance Wire Double where
-  decodeWire (Fixed64Field _ val) = wordToDouble val
+  decodeWire (Fixed64Field _ val) = return $ wordToDouble val
   encodeWire t val = putField t 1 >> putFloat64le val
 
 instance Wire ByteString where
-  decodeWire (DelimitedField _ bs) = bs
-  encodeWire t val = putField t 2 >> (putVarUInt $ B.length val) >> (putByteString val)
+  decodeWire (DelimitedField _ bs) = return bs
+  encodeWire t val = putField t 2 >> putVarUInt (B.length val) >> putByteString val
 
 instance Wire T.Text where
-  decodeWire (DelimitedField _ bs) = T.decodeUtf8 bs
-  encodeWire t val = putField t 2 >> (putVarUInt $ T.length val) >> (putByteString $ T.encodeUtf8 val)
+  decodeWire (DelimitedField _ bs) =
+    case T.decodeUtf8' bs of
+      Right val -> return val
+      Left err  -> fail $ "Decoding failed: " ++ show err
+  encodeWire t val = putField t 2 >> putVarUInt (T.length val) >> putByteString (T.encodeUtf8 val)
 
 newtype Value n f a = Value (f a)
-  deriving (Bits, Bounded, Enum, Eq, Floating, Foldable, Fractional, Functor, Integral, Monoid, Num, Ord, Real, RealFloat, RealFrac, Traversable)
+  deriving (Bits, Bounded, Enum, Eq, Floating, Foldable, Fractional, Functor, Integral, Monoid, NFData, Num, Ord, Real, RealFloat, RealFrac, Traversable)
 
 instance (Show a, Tl.Nat n) => Show (Value n Maybe a) where
   show (Value x) = "Optional " ++ show (Tl.toInt (undefined :: n)) ++ " " ++ show x
@@ -246,11 +250,11 @@ type Optional n a = Value n Maybe a
 type Required n a = Value n Identity a
 type Repeated n a = Value n [] a
 
-newtype Enumeration a = Enumeration Int deriving (Eq, Ord, Show)
+newtype Enumeration a = Enumeration Int deriving (Eq, NFData, Ord, Show)
 
 instance Wire (Enumeration a) where
-  decodeWire = do
-    val <- decodeWire
+  decodeWire f = do
+    val <- decodeWire f
     return $ Enumeration (fromIntegral (val :: Int32))
 
 instance Monoid (Enumeration a) where
@@ -279,14 +283,14 @@ instance Enum a => GetEnum (Value n [] (Enumeration a)) where
 
 -- Integer encoding annotations
 newtype Signed a = Signed a
-  deriving (Bits, Bounded, Enum, Eq, Floating, Foldable, Fractional, Functor, Integral, Monoid, Num, Ord, Real, RealFloat, RealFrac, Show, Traversable)
+  deriving (Bits, Bounded, Enum, Eq, Floating, Foldable, Fractional, Functor, Integral, Monoid, NFData, Num, Ord, Real, RealFloat, RealFrac, Show, Traversable)
 
 newtype Fixed a = Fixed a
-  deriving (Bits, Bounded, Enum, Eq, Floating, Foldable, Fractional, Functor, Integral, Monoid, Num, Ord, Real, RealFloat, RealFrac, Show, Traversable)
+  deriving (Bits, Bounded, Enum, Eq, Floating, Foldable, Fractional, Functor, Integral, Monoid, NFData, Num, Ord, Real, RealFloat, RealFrac, Show, Traversable)
 
 
 class GDecode (f :: * -> *) where
-  gdecode :: (Applicative m, Monad m, MonadPlus m) => HashMap Tag [Field] -> m (f a)
+  gdecode :: HashMap Tag [Field] -> Get (f a)
 
 instance GDecode a => GDecode (M1 i c a) where
   gdecode = fmap M1 . gdecode
@@ -296,24 +300,29 @@ class Decode (a :: *) where
   default decode :: (Generic a, GDecode (Rep a)) => Get a
   decode = decodeMessage
 
--- instance (GDecode x, GDecode y) => GDecode (x :+: y) where
-  -- decode msg = do
+foldMapM :: (Monad m, Foldable t, Monoid b) => (a -> m b) -> t a -> m b
+foldMapM f = foldlM go mempty where
+  go !acc el = mappend acc `liftM` f el
 
 instance (Wire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Value n Maybe a)) where
   gdecode msg =
-    pure $! case HashMap.lookup (fromIntegral (Tl.toInt (undefined :: n))) msg of
-      Just val -> K1 . Value $ foldMap decodeWire val
-      Nothing  -> K1 mempty
+    let tag = fromIntegral $ Tl.toInt (undefined :: n)
+    in case HashMap.lookup tag msg of
+      Just val -> K1 . Value <$> foldMapM decodeWire val
+      Nothing  -> pure $ K1 mempty
 
 instance (Wire a, Tl.Nat n) => GDecode (K1 i (Value n [] a)) where
-  gdecode msg = case HashMap.lookup (fromIntegral (Tl.toInt (undefined :: n))) msg of
-    Just val -> pure . K1 . Value . fmap decodeWire $ val
-    Nothing  -> pure $ K1 mempty
+  gdecode msg =
+    let tag = fromIntegral $ Tl.toInt (undefined :: n)
+    in case HashMap.lookup tag msg of
+      Just val -> K1 . Value <$> Data.Traversable.mapM decodeWire val
+      Nothing  -> pure $ K1 mempty
 
 instance (Wire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Value n Identity a)) where
   gdecode msg =
-    case HashMap.lookup (fromIntegral (Tl.toInt (undefined :: n))) msg of
-      Just val -> pure . K1 . Value . Identity $ foldMap decodeWire val
+    let tag = fromIntegral $ Tl.toInt (undefined :: n)
+    in case HashMap.lookup tag msg of
+      Just val -> K1 . Value . Identity <$> foldMapM decodeWire val
       Nothing  -> mzero
 
 {-
@@ -323,6 +332,9 @@ instance (Wire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Packed n a)) where
 
 instance (GDecode a, GDecode b) => GDecode (a :*: b) where
   gdecode msg = liftA2 (:*:) (gdecode msg) (gdecode msg)
+
+instance (GDecode x, GDecode y) => GDecode (x :+: y) where
+  gdecode msg = L1 <$> gdecode msg <|> R1 <$> gdecode msg
 
 class GEncode (f :: * -> *) where
   gencode :: f a -> Put
@@ -335,18 +347,16 @@ class Encode (a :: *) where
 instance GEncode a => GEncode (M1 i c a) where
   gencode = gencode . unM1
 
-
-instance (Wire a, Monoid a, Tl.Nat n) => GEncode (K1 i (Value n Maybe a)) where
-  gencode (K1 (Value opt)) = encodeWire (fromIntegral $ Tl.toInt (undefined :: n)) opt
-
-instance (Wire a, Tl.Nat n) => GEncode (K1 i (Value n [] a)) where
-  gencode (K1 (Value opt)) = traverse_ (encodeWire (fromIntegral $ Tl.toInt (undefined :: n))) opt
-
-instance (Wire a, Monoid a, Tl.Nat n) => GEncode (K1 i (Value n Identity a)) where
-  gencode (K1 (Value (Identity val))) = encodeWire (fromIntegral $ Tl.toInt (undefined :: n)) val
+instance (Wire a, Tl.Nat n, Foldable f) => GEncode (K1 i (Value n f a)) where
+  gencode (K1 (Value opt)) = traverse_ (encodeWire tag) opt where
+    tag = fromIntegral $ Tl.toInt (undefined :: n)
 
 instance (GEncode a, GEncode b) => GEncode (a :*: b) where
   gencode (x :*: y) = gencode x >> gencode y
+
+instance (GEncode a, GEncode b) => GEncode (a :+: b) where
+  gencode (L1 x) = gencode x
+  gencode (R1 y) = gencode y
 
 -- Taken from google's code, but I had to explcitly add fromIntegral in the right places:
 zzEncode32 :: Int32 -> Word32
