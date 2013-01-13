@@ -28,6 +28,7 @@ module Data.ProtocolBuffers
   ) where
 
 import Control.Applicative
+import Control.DeepSeq (NFData)
 import Control.Monad
 import Control.Monad.Identity
 import Data.Bits
@@ -217,7 +218,7 @@ instance Wire T.Text where
   encodeWire t val = putField t 2 >> putVarUInt (T.length val) >> putByteString (T.encodeUtf8 val)
 
 newtype Value n f a = Value (f a)
-  deriving (Bits, Bounded, Enum, Eq, Floating, Foldable, Fractional, Functor, Integral, Monoid, Num, Ord, Real, RealFloat, RealFrac, Traversable)
+  deriving (Bits, Bounded, Enum, Eq, Floating, Foldable, Fractional, Functor, Integral, Monoid, NFData, Num, Ord, Real, RealFloat, RealFrac, Traversable)
 
 instance (Show a, Tl.Nat n) => Show (Value n Maybe a) where
   show (Value x) = "Optional " ++ show (Tl.toInt (undefined :: n)) ++ " " ++ show x
@@ -249,7 +250,7 @@ type Optional n a = Value n Maybe a
 type Required n a = Value n Identity a
 type Repeated n a = Value n [] a
 
-newtype Enumeration a = Enumeration Int deriving (Eq, Ord, Show)
+newtype Enumeration a = Enumeration Int deriving (Eq, NFData, Ord, Show)
 
 instance Wire (Enumeration a) where
   decodeWire f = do
@@ -282,10 +283,10 @@ instance Enum a => GetEnum (Value n [] (Enumeration a)) where
 
 -- Integer encoding annotations
 newtype Signed a = Signed a
-  deriving (Bits, Bounded, Enum, Eq, Floating, Foldable, Fractional, Functor, Integral, Monoid, Num, Ord, Real, RealFloat, RealFrac, Show, Traversable)
+  deriving (Bits, Bounded, Enum, Eq, Floating, Foldable, Fractional, Functor, Integral, Monoid, NFData, Num, Ord, Real, RealFloat, RealFrac, Show, Traversable)
 
 newtype Fixed a = Fixed a
-  deriving (Bits, Bounded, Enum, Eq, Floating, Foldable, Fractional, Functor, Integral, Monoid, Num, Ord, Real, RealFloat, RealFrac, Show, Traversable)
+  deriving (Bits, Bounded, Enum, Eq, Floating, Foldable, Fractional, Functor, Integral, Monoid, NFData, Num, Ord, Real, RealFloat, RealFrac, Show, Traversable)
 
 
 class GDecode (f :: * -> *) where
