@@ -29,6 +29,7 @@ library
     base              >= 3      && < 5,
     bytestring        >= 0.9.1  && < 0.10,
     cereal,
+    data-binary-ieee754,
     ghc-prim,
     mtl,
     text,

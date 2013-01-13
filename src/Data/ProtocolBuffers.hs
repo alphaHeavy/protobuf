@@ -37,7 +37,7 @@ import qualified Data.Text.Encoding as T
 import Data.Traversable
 import qualified Data.TypeLevel as Tl
 import Data.Word
-import Unsafe.Coerce
+import Data.Binary.IEEE754 (wordToDouble, wordToFloat)
 
 import GHC.Generics
 
@@ -185,11 +185,11 @@ instance Wire Bool where
   encodeWire t val = putField t 0 >> (putVarUInt $ if val == False then (0 :: Int32) else 1)
 
 instance Wire Float where
-  decodeWire (Fixed32Field _ val) = unsafeCoerce val
+  decodeWire (Fixed32Field _ val) = wordToFloat val
   encodeWire t val = putField t 5 >> putFloat32le val
 
 instance Wire Double where
-  decodeWire (Fixed64Field _ val) = unsafeCoerce val
+  decodeWire (Fixed64Field _ val) = wordToDouble val
   encodeWire t val = putField t 1 >> putFloat64le val
 
 instance Wire ByteString where
