@@ -17,7 +17,20 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Data.ProtocolBuffers where
+module Data.ProtocolBuffers
+  ( Encode(..)
+  , Decode(..)
+  , Wire(..)
+  , Value
+  , Required
+  , Optional
+  , Repeated
+  , GetValue(..)
+  , Enumeration
+  , GetEnum(..)
+  , Signed(..)
+  , Fixed(..)
+  ) where
 
 import Control.Applicative
 import Control.Monad
