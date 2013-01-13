@@ -296,9 +296,6 @@ class Decode (a :: *) where
   default decode :: (Generic a, GDecode (Rep a)) => Get a
   decode = decodeMessage
 
--- instance (GDecode x, GDecode y) => GDecode (x :+: y) where
-  -- decode msg = do
-
 instance (Wire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Value n Maybe a)) where
   gdecode msg =
     pure $! case HashMap.lookup (fromIntegral (Tl.toInt (undefined :: n))) msg of
@@ -306,9 +303,10 @@ instance (Wire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Value n Maybe a)) where
       Nothing  -> K1 mempty
 
 instance (Wire a, Tl.Nat n) => GDecode (K1 i (Value n [] a)) where
-  gdecode msg = case HashMap.lookup (fromIntegral (Tl.toInt (undefined :: n))) msg of
-    Just val -> pure . K1 . Value . fmap decodeWire $ val
-    Nothing  -> pure $ K1 mempty
+  gdecode msg =
+    pure $! case HashMap.lookup (fromIntegral (Tl.toInt (undefined :: n))) msg of
+      Just val -> K1 . Value . fmap decodeWire $ val
+      Nothing  -> K1 mempty
 
 instance (Wire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Value n Identity a)) where
   gdecode msg =
@@ -323,6 +321,9 @@ instance (Wire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Packed n a)) where
 
 instance (GDecode a, GDecode b) => GDecode (a :*: b) where
   gdecode msg = liftA2 (:*:) (gdecode msg) (gdecode msg)
+
+instance (GDecode x, GDecode y) => GDecode (x :+: y) where
+  gdecode msg = fmap L1 (gdecode msg) `mplus` fmap R1 (gdecode msg)
 
 class GEncode (f :: * -> *) where
   gencode :: f a -> Put
@@ -341,6 +342,10 @@ instance (Wire a, Tl.Nat n, Foldable f) => GEncode (K1 i (Value n f a)) where
 
 instance (GEncode a, GEncode b) => GEncode (a :*: b) where
   gencode (x :*: y) = gencode x >> gencode y
+
+instance (GEncode a, GEncode b) => GEncode (a :+: b) where
+  gencode (L1 x) = gencode x
+  gencode (R1 y) = gencode y
 
 -- Taken from google's code, but I had to explcitly add fromIntegral in the right places:
 zzEncode32 :: Int32 -> Word32
