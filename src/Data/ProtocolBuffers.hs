@@ -5,7 +5,6 @@
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -52,15 +51,14 @@ import GHC.Generics
 
 type Tag = Word32
 
-data Field where
-  VarintField    :: Tag -> Word64 -> Field
-  Fixed64Field   :: Tag -> Word64 -> Field
-  DelimitedField :: Tag -> ByteString -> Field
-  StartField     :: Tag -> Field
-  EndField       :: Tag -> Field
-  Fixed32Field   :: Tag -> Word32 -> Field
-
-  deriving Show
+data Field
+  = VarintField    {-# UNPACK #-} !Tag {-# UNPACK #-} !Word64
+  | Fixed64Field   {-# UNPACK #-} !Tag {-# UNPACK #-} !Word64
+  | DelimitedField {-# UNPACK #-} !Tag !ByteString
+  | StartField     {-# UNPACK #-} !Tag
+  | EndField       {-# UNPACK #-} !Tag
+  | Fixed32Field   {-# UNPACK #-} !Tag {-# UNPACK #-} !Word32
+    deriving Show
 
 getVarintPrefixedBS :: Get ByteString
 getVarintPrefixedBS = do
