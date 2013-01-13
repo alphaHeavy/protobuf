@@ -2,20 +2,15 @@
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE OverlappingInstances #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE UndecidableInstances #-}
 
 module Data.ProtocolBuffers
   ( Encode(..)
@@ -141,6 +136,10 @@ decodeMessage = fmap to (gdecode =<< go HashMap.empty) where
 
 class Wire a where
   decodeWire :: Field -> a
+  default decodeWire :: (GDecode (Rep a), Generic a) => Field -> a
+  decodeWire (DelimitedField _ bs) = val where
+    Right val = runGet decodeMessage bs
+
   encodeWire :: Tag -> a -> Put
   sizeWire   :: a -> Int
 
@@ -213,10 +212,6 @@ instance Wire ByteString where
 instance Wire T.Text where
   decodeWire (DelimitedField _ bs) = T.decodeUtf8 bs
   encodeWire t val = putField t 2 >> (putVarUInt $ T.length val) >> (putByteString $ T.encodeUtf8 val)
-
-instance (GDecode (Rep a), Generic a) => Wire a where
-  decodeWire (DelimitedField _ bs) = val where
-    Right val = runGet decodeMessage bs
 
 newtype Value n f a = Value (f a)
   deriving (Bits, Bounded, Enum, Eq, Floating, Foldable, Fractional, Functor, Integral, Monoid, Num, Ord, Real, RealFloat, RealFrac, Traversable)
