@@ -139,7 +139,7 @@ class Wire a where
   decodeWire (DelimitedField _ bs) =
     case runGet decodeMessage bs of
       Right val -> return val
-      Left _    -> mzero
+      Left err  -> fail err
 
   encodeWire :: Tag -> a -> Put
   sizeWire   :: a -> Int
@@ -214,7 +214,7 @@ instance Wire T.Text where
   decodeWire (DelimitedField _ bs) =
     case T.decodeUtf8' bs of
       Right val -> return val
-      Left _    -> mzero
+      Left err  -> fail $ "Decoding failed: " ++ show err
   encodeWire t val = putField t 2 >> putVarUInt (T.length val) >> putByteString (T.encodeUtf8 val)
 
 newtype Value n f a = Value (f a)
