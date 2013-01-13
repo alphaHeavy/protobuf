@@ -204,7 +204,7 @@ instance (GDecode (Rep a), Generic a) => Wire a where
   decodeWire (DelimitedField _ bs) = val where
     Right val = runGet decodeMessage bs
 
-newtype Value n f a = Value {getValue :: f a}
+newtype Value n f a = Value (f a)
   deriving (Bits, Bounded, Enum, Eq, Floating, Foldable, Fractional, Functor, Integral, Monoid, Num, Ord, Real, RealFloat, RealFrac, Traversable)
 
 instance (Show a, Tl.Nat n) => Show (Value n Maybe a) where
@@ -215,6 +215,22 @@ instance (Show a, Tl.Nat n) => Show (Value n Identity a) where
 
 instance (Show a, Tl.Nat n) => Show (Value n [] a) where
   show (Value x) = "Repeated " ++ show (Tl.toInt (undefined :: n)) ++ " " ++ show x
+
+class GetValue a where
+  type GetValueType a :: *
+  getValue :: a -> GetValueType a
+
+instance GetValue (Value n Maybe a) where
+  type GetValueType (Value n Maybe a) = Maybe a
+  getValue (Value a) = a
+
+instance GetValue (Value n [] a) where
+  type GetValueType (Value n [] a) = [a]
+  getValue (Value a) = a
+
+instance GetValue (Value n Identity a) where
+  type GetValueType (Value n Identity a) = a
+  getValue (Value (Identity a)) = a
 
 -- field rules
 type Optional n a = Value n Maybe a
