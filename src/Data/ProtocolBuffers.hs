@@ -67,9 +67,7 @@ data Field
     deriving Show
 
 getVarintPrefixedBS :: Get ByteString
-getVarintPrefixedBS = do
-  length <- getVarInt
-  getBytes length
+getVarintPrefixedBS = getBytes =<< getVarInt
 
 getField :: Get Field
 getField = do
@@ -82,6 +80,7 @@ getField = do
     3 -> return $! StartField tag
     4 -> return $! EndField   tag
     5 -> Fixed32Field   tag <$> getWord32le
+    _ -> empty
 
 putField :: Tag -> Word32 -> Put
 putField tag typ = putVarUInt $ tag `shiftL` 3 .|. (typ .&. 7)
@@ -150,7 +149,7 @@ deriving instance Wire a => Wire (Sum a)
 instance Wire a => Wire (Maybe a) where
   decodeWire = fmap Just . decodeWire
   encodeWire t (Just a) = encodeWire t a
-  encodeWire t Nothing  = return ()
+  encodeWire _ Nothing  = return ()
 
 instance Wire Int32 where
   decodeWire (VarintField  _ val) = pure $ fromIntegral val
