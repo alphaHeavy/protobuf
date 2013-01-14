@@ -35,10 +35,11 @@ import Control.DeepSeq (NFData)
 import Control.Monad
 import Control.Monad.Identity
 import Data.Bits
-import Data.ByteString
+import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import Data.Foldable
-import Data.HashMap.Strict as HashMap
+import Data.HashMap.Strict (HashMap)
+import qualified Data.HashMap.Strict as HashMap
 import Data.Int
 import Data.Monoid
 import Data.Serialize.Get
