@@ -136,13 +136,7 @@ decodeMessage = fmap to (gdecode =<< go HashMap.empty) where
 --encodeMessage = gencode . from
 
 class Wire a where
-  decodeWire :: Field -> Get a
-  default decodeWire :: (GDecode (Rep a), Generic a) => Field -> Get a
-  decodeWire (DelimitedField _ bs) =
-    case runGet decodeMessage bs of
-      Right val -> return val
-      Left err  -> fail err
-
+  decodeWire :: Alternative m => Field -> m a
   encodeWire :: Tag -> a -> Put
 
 deriving instance Wire a => Wire (First a)
@@ -156,81 +150,81 @@ instance Wire a => Wire (Maybe a) where
   encodeWire t Nothing  = return ()
 
 instance Wire Int32 where
-  decodeWire (VarintField  _ val) = return $ fromIntegral val
-  decodeWire _ = mzero
+  decodeWire (VarintField  _ val) = pure $ fromIntegral val
+  decodeWire _ = empty
   encodeWire t val = putField t 0 >> putVarSInt val
 
 instance Wire Int64 where
-  decodeWire (VarintField  _ val) = return $ fromIntegral val
-  decodeWire _ = mzero
+  decodeWire (VarintField  _ val) = pure $ fromIntegral val
+  decodeWire _ = empty
   encodeWire t val = putField t 0 >> putVarSInt val
 
 instance Wire Word32 where
-  decodeWire (VarintField  _ val) = return $ fromIntegral val
-  decodeWire _ = mzero
+  decodeWire (VarintField  _ val) = pure $ fromIntegral val
+  decodeWire _ = empty
   encodeWire t val = putField t 0 >> putVarUInt val
 
 instance Wire Word64 where
-  decodeWire (VarintField  _ val) = return val
-  decodeWire _ = mzero
+  decodeWire (VarintField  _ val) = pure val
+  decodeWire _ = empty
   encodeWire t val = putField t 0 >> putVarUInt val
 
 instance Wire (Signed Int32) where
-  decodeWire (VarintField  _ val) = return $ Signed (zzDecode32 (fromIntegral val))
-  decodeWire _ = mzero
+  decodeWire (VarintField  _ val) = pure $ Signed (zzDecode32 (fromIntegral val))
+  decodeWire _ = empty
   encodeWire t (Signed val) = putField t 0 >> (putVarSInt $ zzEncode32 val)
 
 instance Wire (Signed Int64) where
-  decodeWire (VarintField  _ val) = return $ Signed (zzDecode64 (fromIntegral val))
-  decodeWire _ = mzero
+  decodeWire (VarintField  _ val) = pure $ Signed (zzDecode64 (fromIntegral val))
+  decodeWire _ = empty
   encodeWire t (Signed val) = putField t 0 >> (putVarSInt $ zzEncode64 val)
 
 instance Wire (Fixed Int32) where
-  decodeWire (Fixed32Field _ val) = return $ Fixed (fromIntegral val)
-  decodeWire _ = mzero
+  decodeWire (Fixed32Field _ val) = pure $ Fixed (fromIntegral val)
+  decodeWire _ = empty
   encodeWire t (Fixed val) = putField t 5 >> (putWord32le $ fromIntegral val)
 
 instance Wire (Fixed Int64) where
-  decodeWire (Fixed64Field _ val) = return $ Fixed (fromIntegral val)
-  decodeWire _ = mzero
+  decodeWire (Fixed64Field _ val) = pure $ Fixed (fromIntegral val)
+  decodeWire _ = empty
   encodeWire t (Fixed val) = putField t 1 >> (putWord64le $ fromIntegral val)
 
 instance Wire (Fixed Word32) where
-  decodeWire (Fixed32Field _ val) = return $ Fixed val
-  decodeWire _ = mzero
+  decodeWire (Fixed32Field _ val) = pure $ Fixed val
+  decodeWire _ = empty
   encodeWire t (Fixed val) = putField t 5 >> putWord32le val
 
 instance Wire (Fixed Word64) where
-  decodeWire (Fixed64Field _ val) = return $ Fixed val
-  decodeWire _ = mzero
+  decodeWire (Fixed64Field _ val) = pure $ Fixed val
+  decodeWire _ = empty
   encodeWire t (Fixed val) = putField t 1 >> putWord64le val
 
 instance Wire Bool where
-  decodeWire (VarintField _ val) = return $ val /= 0
-  decodeWire _ = mzero
+  decodeWire (VarintField _ val) = pure $ val /= 0
+  decodeWire _ = empty
   encodeWire t val = putField t 0 >> putVarUInt (if val == False then (0 :: Int32) else 1)
 
 instance Wire Float where
-  decodeWire (Fixed32Field _ val) = return $ wordToFloat val
-  decodeWire _ = mzero
+  decodeWire (Fixed32Field _ val) = pure $ wordToFloat val
+  decodeWire _ = empty
   encodeWire t val = putField t 5 >> putFloat32le val
 
 instance Wire Double where
-  decodeWire (Fixed64Field _ val) = return $ wordToDouble val
-  decodeWire _ = mzero
+  decodeWire (Fixed64Field _ val) = pure $ wordToDouble val
+  decodeWire _ = empty
   encodeWire t val = putField t 1 >> putFloat64le val
 
 instance Wire ByteString where
-  decodeWire (DelimitedField _ bs) = return bs
-  decodeWire _ = mzero
+  decodeWire (DelimitedField _ bs) = pure bs
+  decodeWire _ = empty
   encodeWire t val = putField t 2 >> putVarUInt (B.length val) >> putByteString val
 
 instance Wire T.Text where
   decodeWire (DelimitedField _ bs) =
     case T.decodeUtf8' bs of
-      Right val -> return val
-      Left err  -> fail $ "Decoding failed: " ++ show err
-  decodeWire _ = mzero
+      Right val -> pure val
+      Left _err -> empty -- fail $ "Decoding failed: " ++ show err
+  decodeWire _ = empty
   encodeWire t = encodeWire t . T.encodeUtf8
 
 class GetValue a where
@@ -261,12 +255,15 @@ type Repeated (n :: *) a = Tagged n [a]
 instance Show a => Show (Required n a) where
   show (Tagged (Identity x)) = show (Tagged x :: Tagged n a)
 
-newtype Enumeration a = Enumeration Int deriving (Eq, NFData, Ord, Show)
+newtype Enumeration (a :: *) = Enumeration Int deriving (Eq, NFData, Ord, Show)
 
 instance Wire (Enumeration a) where
-  decodeWire f = do
-    val <- decodeWire f
-    return $ Enumeration (fromIntegral (val :: Int32))
+  decodeWire f = Enumeration . c <$> decodeWire f where
+    c :: Int32 -> Int
+    c = fromIntegral
+  encodeWire t (Enumeration a) = encodeWire t . c $ fromEnum a where
+    c :: Int -> Int32
+    c = fromIntegral
 
 instance Monoid (Enumeration a) where
   -- error case is handled by getEnum but we're exposing the instance :-(
@@ -326,7 +323,7 @@ instance (Wire a, Tl.Nat n) => GDecode (K1 i (Repeated n a)) where
   gdecode msg =
     let tag = fromIntegral $ Tl.toInt (undefined :: n)
     in case HashMap.lookup tag msg of
-      Just val -> K1 . Tagged <$> Data.Traversable.mapM decodeWire val
+      Just val -> K1 . Tagged <$> traverse decodeWire val
       Nothing  -> pure $ K1 mempty
 
 instance (Wire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Required n a)) where
@@ -334,7 +331,7 @@ instance (Wire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Required n a)) where
     let tag = fromIntegral $ Tl.toInt (undefined :: n)
     in case HashMap.lookup tag msg of
       Just val -> K1 . Tagged . Identity <$> foldMapM decodeWire val
-      Nothing  -> mzero
+      Nothing  -> empty
 
 {-
 instance (Wire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Packed n a)) where
