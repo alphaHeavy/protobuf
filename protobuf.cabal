@@ -33,6 +33,7 @@ library
     deepseq,
     ghc-prim,
     mtl,
+    tagged,
     text,
     type-level,
     unordered-containers
