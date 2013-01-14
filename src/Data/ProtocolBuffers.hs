@@ -217,38 +217,38 @@ instance Wire T.Text where
       Left err  -> fail $ "Decoding failed: " ++ show err
   encodeWire t val = putField t 2 >> putVarUInt (T.length val) >> putByteString (T.encodeUtf8 val)
 
-newtype Value n f a = Value (f a)
+newtype Value n a = Value a
   deriving (Bits, Bounded, Enum, Eq, Floating, Foldable, Fractional, Functor, Integral, Monoid, NFData, Num, Ord, Real, RealFloat, RealFrac, Traversable)
 
-instance (Show a, Tl.Nat n) => Show (Value n Maybe a) where
+instance (Show a, Tl.Nat n) => Show (Value n (Maybe a)) where
   show (Value x) = "Optional " ++ show (Tl.toInt (undefined :: n)) ++ " " ++ show x
 
-instance (Show a, Tl.Nat n) => Show (Value n Identity a) where
+instance (Show a, Tl.Nat n) => Show (Value n (Identity a)) where
   show (Value (Identity x)) = "Required " ++ show (Tl.toInt (undefined :: n)) ++ " " ++ show x
 
-instance (Show a, Tl.Nat n) => Show (Value n [] a) where
+instance (Show a, Tl.Nat n) => Show (Value n [a]) where
   show (Value x) = "Repeated " ++ show (Tl.toInt (undefined :: n)) ++ " " ++ show x
 
 class GetValue a where
   type GetValueType a :: *
   getValue :: a -> GetValueType a
 
-instance GetValue (Value n Maybe a) where
-  type GetValueType (Value n Maybe a) = Maybe a
+instance GetValue (Value n (Maybe a)) where
+  type GetValueType (Value n (Maybe a)) = Maybe a
   getValue (Value a) = a
 
-instance GetValue (Value n [] a) where
-  type GetValueType (Value n [] a) = [a]
+instance GetValue (Value n [a]) where
+  type GetValueType (Value n [a]) = [a]
   getValue (Value a) = a
 
-instance GetValue (Value n Identity a) where
-  type GetValueType (Value n Identity a) = a
+instance GetValue (Value n (Identity a)) where
+  type GetValueType (Value n (Identity a)) = a
   getValue (Value (Identity a)) = a
 
 -- field rules
-type Optional n a = Value n Maybe a
-type Required n a = Value n Identity a
-type Repeated n a = Value n [] a
+type Optional n a = Value n (Maybe a)
+type Required n a = Value n (Identity a)
+type Repeated n a = Value n [a]
 
 newtype Enumeration a = Enumeration Int deriving (Eq, NFData, Ord, Show)
 
@@ -267,17 +267,17 @@ class GetEnum a where
   type GetEnumResult a :: *
   getEnum :: a -> GetEnumResult a
 
-instance Enum a => GetEnum (Value n Maybe (Enumeration a)) where
-  type GetEnumResult (Value n Maybe (Enumeration a)) = Maybe a
+instance Enum a => GetEnum (Value n (Maybe (Enumeration a))) where
+  type GetEnumResult (Value n (Maybe (Enumeration a))) = Maybe a
   getEnum (Value (Just (Enumeration x))) = Just $ toEnum x
   getEnum (Value Nothing) = Nothing
 
-instance Enum a => GetEnum (Value n Identity (Enumeration a)) where
-  type GetEnumResult (Value n Identity (Enumeration a)) = a
+instance Enum a => GetEnum (Value n (Identity (Enumeration a))) where
+  type GetEnumResult (Value n (Identity (Enumeration a))) = a
   getEnum (Value (Identity (Enumeration x))) = toEnum x
 
-instance Enum a => GetEnum (Value n [] (Enumeration a)) where
-  type GetEnumResult (Value n [] (Enumeration a)) = [a]
+instance Enum a => GetEnum (Value n [Enumeration a]) where
+  type GetEnumResult (Value n [Enumeration a]) = [a]
   getEnum (Value xs) = fmap f xs where
     f (Enumeration x) = toEnum x
 
@@ -304,21 +304,21 @@ foldMapM :: (Monad m, Foldable t, Monoid b) => (a -> m b) -> t a -> m b
 foldMapM f = foldlM go mempty where
   go !acc el = mappend acc `liftM` f el
 
-instance (Wire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Value n Maybe a)) where
+instance (Wire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Value n (Maybe a))) where
   gdecode msg =
     let tag = fromIntegral $ Tl.toInt (undefined :: n)
     in case HashMap.lookup tag msg of
       Just val -> K1 . Value <$> foldMapM decodeWire val
       Nothing  -> pure $ K1 mempty
 
-instance (Wire a, Tl.Nat n) => GDecode (K1 i (Value n [] a)) where
+instance (Wire a, Tl.Nat n) => GDecode (K1 i (Value n [a])) where
   gdecode msg =
     let tag = fromIntegral $ Tl.toInt (undefined :: n)
     in case HashMap.lookup tag msg of
       Just val -> K1 . Value <$> Data.Traversable.mapM decodeWire val
       Nothing  -> pure $ K1 mempty
 
-instance (Wire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Value n Identity a)) where
+instance (Wire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Value n (Identity a))) where
   gdecode msg =
     let tag = fromIntegral $ Tl.toInt (undefined :: n)
     in case HashMap.lookup tag msg of
@@ -347,7 +347,7 @@ class Encode (a :: *) where
 instance GEncode a => GEncode (M1 i c a) where
   gencode = gencode . unM1
 
-instance (Wire a, Tl.Nat n, Foldable f) => GEncode (K1 i (Value n f a)) where
+instance (Wire a, Tl.Nat n, Foldable f) => GEncode (K1 i (Value n (f a))) where
   gencode (K1 (Value opt)) = traverse_ (encodeWire tag) opt where
     tag = fromIntegral $ Tl.toInt (undefined :: n)
 
