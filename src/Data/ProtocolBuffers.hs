@@ -288,20 +288,27 @@ instance Monoid (Enumeration a) where
 class GetEnum a where
   type GetEnumResult a :: *
   getEnum :: a -> GetEnumResult a
+  putEnum :: GetEnumResult a -> a
+
+instance Enum a => GetEnum (Enumeration a) where
+  type GetEnumResult (Enumeration a) = a
+  getEnum (Enumeration x) = toEnum x
+  putEnum = Enumeration . fromEnum
 
 instance Enum a => GetEnum (Optional n (Enumeration a)) where
   type GetEnumResult (Tagged n (Maybe (Enumeration a))) = Maybe a
-  getEnum (Tagged (Just (Enumeration x))) = Just $ toEnum x
-  getEnum (Tagged Nothing) = Nothing
+  getEnum = fmap getEnum . unTagged
+  putEnum = Tagged . fmap putEnum
 
 instance Enum a => GetEnum (Required n (Enumeration a)) where
   type GetEnumResult (Tagged n (Identity (Enumeration a))) = a
-  getEnum (Tagged (Identity (Enumeration x))) = toEnum x
+  getEnum = getEnum . runIdentity . unTagged
+  putEnum = Tagged . Identity . putEnum
 
 instance Enum a => GetEnum (Repeated n (Enumeration a)) where
   type GetEnumResult (Tagged n [Enumeration a]) = [a]
-  getEnum (Tagged xs) = fmap f xs where
-    f (Enumeration x) = toEnum x
+  getEnum = fmap getEnum . unTagged
+  putEnum = Tagged . fmap putEnum
 
 -- Integer encoding annotations
 newtype Signed a = Signed a
