@@ -186,7 +186,7 @@ instance Wire (Fixed Int32) where
 
 instance Wire (Fixed Int64) where
   decodeWire (Fixed64Field _ val) = return $ Fixed (fromIntegral val)
-  encodeWire t (Fixed val) = putField t 5 >> (putWord64le $ fromIntegral val)
+  encodeWire t (Fixed val) = putField t 1 >> (putWord64le $ fromIntegral val)
 
 instance Wire (Fixed Word32) where
   decodeWire (Fixed32Field _ val) = return $ Fixed val
