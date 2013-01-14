@@ -16,6 +16,7 @@
 module Data.ProtocolBuffers
   ( Encode(..)
   , Decode(..)
+  , decodeMessage
   , decodeLengthPrefixed
   , Wire(..)
   , Required
@@ -124,8 +125,8 @@ fieldTag f = case f of
   EndField       t   -> t
   Fixed32Field   t _ -> t
 
-decodeMessage :: (GDecode (Rep a), Generic a) => Get a
-decodeMessage = fmap to (gdecode =<< go HashMap.empty) where
+decodeMessage :: Decode a => Get a
+decodeMessage = decode =<< go HashMap.empty where
   go msg = do
     mfield <- Just `fmap` getField <|> return Nothing
     case mfield of
@@ -298,15 +299,15 @@ newtype Fixed a = Fixed a
 
 
 class GDecode (f :: * -> *) where
-  gdecode :: HashMap Tag [Field] -> Get (f a)
+  gdecode :: (Alternative m, Monad m) => HashMap Tag [Field] -> m (f a)
 
 instance GDecode a => GDecode (M1 i c a) where
   gdecode = fmap M1 . gdecode
 
 class Decode (a :: *) where
-  decode :: Get a
-  default decode :: (Generic a, GDecode (Rep a)) => Get a
-  decode = decodeMessage
+  decode :: (Alternative m, Monad m) => HashMap Tag [Field] -> m a
+  default decode :: (Alternative m, Monad m, Generic a, GDecode (Rep a)) => HashMap Tag [Field] -> m a
+  decode = fmap to . gdecode
 
 foldMapM :: (Monad m, Foldable t, Monoid b) => (a -> m b) -> t a -> m b
 foldMapM f = foldlM go mempty where
@@ -379,4 +380,4 @@ zzDecode64 w = (fromIntegral (w `shiftR` 1)) `xor` (negate (fromIntegral (w .&. 
 decodeLengthPrefixed :: Decode a => Get a
 decodeLengthPrefixed = do
   len <- getWord32le
-  isolate (fromIntegral len) decode
+  isolate (fromIntegral len) decodeMessage
