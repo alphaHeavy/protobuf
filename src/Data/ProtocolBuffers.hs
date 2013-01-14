@@ -236,18 +236,22 @@ instance Wire T.Text where
 class GetValue a where
   type GetValueType a :: *
   getValue :: a -> GetValueType a
+  putValue :: GetValueType a -> a
 
 instance GetValue (Optional n a) where
   type GetValueType (Tagged n (Maybe a)) = Maybe a
   getValue (Tagged a) = a
+  putValue = Tagged
 
 instance GetValue (Repeated n a) where
   type GetValueType (Tagged n [a]) = [a]
   getValue (Tagged a) = a
+  putValue = Tagged
 
 instance GetValue (Required n a) where
   type GetValueType (Tagged n (Identity a)) = a
   getValue (Tagged (Identity a)) = a
+  putValue = Tagged . Identity
 
 -- field rules
 type Optional (n :: *) a = Tagged n (Maybe a)
