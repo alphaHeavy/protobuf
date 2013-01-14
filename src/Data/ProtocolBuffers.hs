@@ -144,7 +144,6 @@ class Wire a where
       Left err  -> fail err
 
   encodeWire :: Tag -> a -> Put
-  sizeWire   :: a -> Int
 
 deriving instance Wire a => Wire (First a)
 deriving instance Wire a => Wire (Last a)
@@ -155,8 +154,6 @@ instance Wire a => Wire (Maybe a) where
   decodeWire = fmap Just . decodeWire
   encodeWire t (Just a) = encodeWire t a
   encodeWire t Nothing  = return ()
-  sizeWire (Just a) = sizeWire a
-  sizeWire Nothing  = 0
 
 instance Wire Int32 where
   decodeWire (VarintField  _ val) = return $ fromIntegral val
