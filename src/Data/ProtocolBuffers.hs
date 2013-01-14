@@ -217,7 +217,7 @@ instance Wire T.Text where
     case T.decodeUtf8' bs of
       Right val -> return val
       Left err  -> fail $ "Decoding failed: " ++ show err
-  encodeWire t val = putField t 2 >> putVarUInt (T.length val) >> putByteString (T.encodeUtf8 val)
+  encodeWire t = encodeWire t . T.encodeUtf8
 
 class GetValue a where
   type GetValueType a :: *
