@@ -25,6 +25,8 @@ library
     src
   exposed-modules:
     Data.ProtocolBuffers
+    Data.ProtocolBuffers.Internal
+  other-modules:
   build-depends:
     base              >= 3      && < 5,
     bytestring        >= 0.9.1  && < 0.10,
