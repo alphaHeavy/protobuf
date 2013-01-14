@@ -155,61 +155,77 @@ instance Wire a => Wire (Maybe a) where
   decodeWire = fmap Just . decodeWire
   encodeWire t (Just a) = encodeWire t a
   encodeWire t Nothing  = return ()
+  sizeWire (Just a) = sizeWire a
+  sizeWire Nothing  = 0
 
 instance Wire Int32 where
   decodeWire (VarintField  _ val) = return $ fromIntegral val
+  decodeWire _ = mzero
   encodeWire t val = putField t 0 >> putVarSInt val
 
 instance Wire Int64 where
   decodeWire (VarintField  _ val) = return $ fromIntegral val
+  decodeWire _ = mzero
   encodeWire t val = putField t 0 >> putVarSInt val
 
 instance Wire Word32 where
   decodeWire (VarintField  _ val) = return $ fromIntegral val
+  decodeWire _ = mzero
   encodeWire t val = putField t 0 >> putVarUInt val
 
 instance Wire Word64 where
   decodeWire (VarintField  _ val) = return val
+  decodeWire _ = mzero
   encodeWire t val = putField t 0 >> putVarUInt val
 
 instance Wire (Signed Int32) where
   decodeWire (VarintField  _ val) = return $ Signed (zzDecode32 (fromIntegral val))
+  decodeWire _ = mzero
   encodeWire t (Signed val) = putField t 0 >> (putVarSInt $ zzEncode32 val)
 
 instance Wire (Signed Int64) where
   decodeWire (VarintField  _ val) = return $ Signed (zzDecode64 (fromIntegral val))
+  decodeWire _ = mzero
   encodeWire t (Signed val) = putField t 0 >> (putVarSInt $ zzEncode64 val)
 
 instance Wire (Fixed Int32) where
   decodeWire (Fixed32Field _ val) = return $ Fixed (fromIntegral val)
+  decodeWire _ = mzero
   encodeWire t (Fixed val) = putField t 5 >> (putWord32le $ fromIntegral val)
 
 instance Wire (Fixed Int64) where
   decodeWire (Fixed64Field _ val) = return $ Fixed (fromIntegral val)
+  decodeWire _ = mzero
   encodeWire t (Fixed val) = putField t 1 >> (putWord64le $ fromIntegral val)
 
 instance Wire (Fixed Word32) where
   decodeWire (Fixed32Field _ val) = return $ Fixed val
+  decodeWire _ = mzero
   encodeWire t (Fixed val) = putField t 5 >> putWord32le val
 
 instance Wire (Fixed Word64) where
   decodeWire (Fixed64Field _ val) = return $ Fixed val
+  decodeWire _ = mzero
   encodeWire t (Fixed val) = putField t 1 >> putWord64le val
 
 instance Wire Bool where
   decodeWire (VarintField _ val) = return $ val /= 0
+  decodeWire _ = mzero
   encodeWire t val = putField t 0 >> putVarUInt (if val == False then (0 :: Int32) else 1)
 
 instance Wire Float where
   decodeWire (Fixed32Field _ val) = return $ wordToFloat val
+  decodeWire _ = mzero
   encodeWire t val = putField t 5 >> putFloat32le val
 
 instance Wire Double where
   decodeWire (Fixed64Field _ val) = return $ wordToDouble val
+  decodeWire _ = mzero
   encodeWire t val = putField t 1 >> putFloat64le val
 
 instance Wire ByteString where
   decodeWire (DelimitedField _ bs) = return bs
+  decodeWire _ = mzero
   encodeWire t val = putField t 2 >> putVarUInt (B.length val) >> putByteString val
 
 instance Wire T.Text where
@@ -217,6 +233,7 @@ instance Wire T.Text where
     case T.decodeUtf8' bs of
       Right val -> return val
       Left err  -> fail $ "Decoding failed: " ++ show err
+  decodeWire _ = mzero
   encodeWire t = encodeWire t . T.encodeUtf8
 
 class GetValue a where
