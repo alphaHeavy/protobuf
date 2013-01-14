@@ -17,7 +17,7 @@ module Data.ProtocolBuffers
   ( Encode(..)
   , Decode(..)
   , decodeMessage
-  , decodeLengthPrefixed
+  , decodeLengthPrefixedMessage
   , Wire(..)
   , Required
   , Optional
@@ -397,7 +397,7 @@ zzDecode32 w = (fromIntegral (w `shiftR` 1)) `xor` (negate (fromIntegral (w .&. 
 zzDecode64 :: Word64 -> Int64
 zzDecode64 w = (fromIntegral (w `shiftR` 1)) `xor` (negate (fromIntegral (w .&. 1)))
 
-decodeLengthPrefixed :: Decode a => Get a
-decodeLengthPrefixed = do
+decodeLengthPrefixedMessage :: Decode a => Get a
+decodeLengthPrefixedMessage = do
   len <- getWord32le
   isolate (fromIntegral len) decodeMessage
