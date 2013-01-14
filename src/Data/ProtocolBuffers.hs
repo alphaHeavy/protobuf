@@ -18,7 +18,6 @@ module Data.ProtocolBuffers
   , Decode(..)
   , decodeMessage
   , decodeLengthPrefixedMessage
-  , Wire(..)
   , Required
   , Optional
   , Repeated
