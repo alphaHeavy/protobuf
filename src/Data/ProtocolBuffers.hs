@@ -24,6 +24,7 @@ module Data.ProtocolBuffers
   , Repeated
   , GetValue(..)
   , Enumeration
+  , EmbeddedMessage
   , GetEnum(..)
   , Signed(..)
   , Fixed(..)
@@ -227,6 +228,18 @@ instance Wire T.Text where
       Left _err -> empty -- fail $ "Decoding failed: " ++ show err
   decodeWire _ = empty
   encodeWire t = encodeWire t . T.encodeUtf8
+
+newtype EmbeddedMessage m = EmbeddedMessage m
+  deriving (Bits, Bounded, Enum, Eq, Floating, Foldable, Fractional, Functor, Integral, Monoid, NFData, Num, Ord, Real, RealFloat, RealFrac, Show, Traversable)
+
+instance (Encode m, Decode m) => Wire (EmbeddedMessage m) where
+  decodeWire (DelimitedField _ bs) =
+    case runGet decodeMessage bs of
+      Right val -> pure $ EmbeddedMessage val
+      Left _err -> empty
+  decodeWire _ = empty
+  encodeWire t (EmbeddedMessage m) =
+    encodeWire t . runPut $ encode m
 
 class GetValue a where
   type GetValueType a :: *
