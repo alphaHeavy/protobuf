@@ -28,35 +28,47 @@ import Data.Monoid
 import Data.Tagged
 import Data.Traversable
 
--- field rules
+-- | Optional fields. Values that are not found will return 'Nothing'.
 type Optional (n :: *) a = Tagged n (Maybe a)
+
+-- | Required fields. Parsing will return 'Control.Alternative.empty' if a 'Required' value is not found while decoding.
 type Required (n :: *) a = Tagged n (Identity a)
+
+-- | Lists of values.
 type Repeated (n :: *) a = Tagged n [a]
 
 instance Show a => Show (Required n a) where
   show (Tagged (Identity x)) = show (Tagged x :: Tagged n a)
 
+-- | What will become an isomorphism lens...
 class GetValue a where
   type GetValueType a :: *
+  -- | Extract a value from it's 'Tagged' representation.
   getValue :: a -> GetValueType a
+  -- | Wrap it back up again.
   putValue :: GetValueType a -> a
 
+-- | A 'Maybe' lens on an 'Optional' field.
 instance GetValue (Optional n a) where
   type GetValueType (Tagged n (Maybe a)) = Maybe a
   getValue = unTagged
   putValue = Tagged
 
+-- | A list lens on an 'Repeated' field.
 instance GetValue (Repeated n a) where
   type GetValueType (Tagged n [a]) = [a]
   getValue = unTagged
   putValue = Tagged
 
+-- | An 'Identity' lens on an 'Required' field.
 instance GetValue (Required n a) where
   type GetValueType (Tagged n (Identity a)) = a
   getValue = runIdentity . unTagged
   putValue = Tagged . Identity
 
--- | A newtype wrapper used to distinguish enums from other field types.
+-- |
+-- A newtype wrapper used to distinguish 'Prelude.Enum's from other field types.
+-- 'Enumeration' fields use 'Prelude.fromEnum' and 'Prelude.toEnum' when encoding and decoding messages.
 newtype Enumeration a = Enumeration a
   deriving (Bounded, Eq, Enum, Foldable, Functor, Ord, NFData, Show, Traversable)
 
@@ -66,6 +78,7 @@ instance Monoid (Enumeration a) where
   mempty = Enumeration $ error "Empty Enumeration"
   _ `mappend` x = x
 
+-- | Similar to 'GetValue' but specialized for 'Enumeration' to avoid overlap.
 class GetEnum a where
   type GetEnumResult a :: *
   getEnum :: a -> GetEnumResult a

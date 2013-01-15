@@ -23,9 +23,13 @@ import GHC.Generics
 
 import Data.ProtocolBuffers.Wire
 
+-- |
+-- Encode a Protocol Buffers message.
 encodeMessage :: Encode a => a -> Put
 encodeMessage = encode
 
+-- |
+-- Encode a Protocol Buffers message prefixed with a 32-bit integer describing it's length.
 encodeLengthPrefixedMessage :: Encode a => a -> Put
 {-# INLINE encodeLengthPrefixedMessage #-}
 encodeLengthPrefixedMessage msg = do

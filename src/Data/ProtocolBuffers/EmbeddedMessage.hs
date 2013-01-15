@@ -19,6 +19,9 @@ import Data.ProtocolBuffers.Decode
 import Data.ProtocolBuffers.Encode
 import Data.ProtocolBuffers.Wire
 
+-- |
+-- A newtype wrapper used to distinguish encoded messages from other field types.
+-- These messages are stored as delimited fields.
 newtype EmbeddedMessage m = EmbeddedMessage m
   deriving (Eq, Foldable, Functor, Monoid, NFData, Ord, Show, Traversable)
 

@@ -225,10 +225,13 @@ instance Enum a => Wire (Enumeration a) where
     c :: Int -> Int32
     c = fromIntegral
 
--- Integer encoding annotations
+-- |
+-- Signed integers are stored in a zz-encoded form.
 newtype Signed a = Signed a
   deriving (Bits, Bounded, Enum, Eq, Floating, Foldable, Fractional, Functor, Integral, Monoid, NFData, Num, Ord, Real, RealFloat, RealFrac, Show, Traversable)
 
+-- |
+-- Fixed integers are stored in little-endian form without additional encoding.
 newtype Fixed a = Fixed a
   deriving (Bits, Bounded, Enum, Eq, Floating, Foldable, Fractional, Functor, Integral, Monoid, NFData, Num, Ord, Real, RealFloat, RealFrac, Show, Traversable)
 
