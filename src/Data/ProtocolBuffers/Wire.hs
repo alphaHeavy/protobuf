@@ -122,7 +122,7 @@ fieldTag f = case f of
   Fixed32Field   t _ -> t
 
 class Wire a where
-  decodeWire :: Alternative m => Field -> m a
+  decodeWire :: Field -> Get a
   encodeWire :: Tag -> a -> Put
 
 deriving instance Wire a => Wire (First a)
@@ -213,7 +213,7 @@ instance Wire T.Text where
   decodeWire (DelimitedField _ bs) =
     case T.decodeUtf8' bs of
       Right val -> pure val
-      Left _err -> empty -- fail $ "Decoding failed: " ++ show err
+      Left err  -> fail $ "Decoding failed: " ++ show err
   decodeWire _ = empty
   encodeWire t = encodeWire t . T.encodeUtf8
 
@@ -221,9 +221,9 @@ instance Enum a => Wire (Enumeration a) where
   decodeWire f = Enumeration . c <$> decodeWire f where
     c :: Int32 -> a
     c = toEnum . fromIntegral
-  encodeWire t (Enumeration a) = encodeWire t . c $ fromEnum a where
-    c :: Int -> Int32
-    c = fromIntegral
+  encodeWire t (Enumeration a) = encodeWire t $ c a where
+    c :: a -> Int32
+    c = fromIntegral . fromEnum
 
 -- |
 -- Signed integers are stored in a zz-encoded form.
