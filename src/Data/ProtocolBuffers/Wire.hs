@@ -40,6 +40,8 @@ import Data.Traversable
 import Data.Word
 import Data.Binary.IEEE754 (wordToDouble, wordToFloat)
 
+import Data.ProtocolBuffers.Types
+
 type Tag = Word32
 
 data Field
@@ -203,8 +205,6 @@ instance Wire T.Text where
   decodeWire _ = empty
   encodeWire t = encodeWire t . T.encodeUtf8
 
-newtype Enumeration (a :: *) = Enumeration Int deriving (Eq, NFData, Ord, Show)
-
 instance Wire (Enumeration a) where
   decodeWire f = Enumeration . c <$> decodeWire f where
     c :: Int32 -> Int
@@ -212,22 +212,6 @@ instance Wire (Enumeration a) where
   encodeWire t (Enumeration a) = encodeWire t . c $ fromEnum a where
     c :: Int -> Int32
     c = fromIntegral
-
-instance Monoid (Enumeration a) where
-  -- error case is handled by getEnum but we're exposing the instance :-(
-  -- really should be a Semigroup instance... if we want a semigroup dependency
-  mempty = Enumeration (error "Empty Enumeration")
-  _ `mappend` x = x
-
-class GetEnum a where
-  type GetEnumResult a :: *
-  getEnum :: a -> GetEnumResult a
-  putEnum :: GetEnumResult a -> a
-
-instance Enum a => GetEnum (Enumeration a) where
-  type GetEnumResult (Enumeration a) = a
-  getEnum (Enumeration x) = toEnum x
-  putEnum = Enumeration . fromEnum
 
 -- Integer encoding annotations
 newtype Signed a = Signed a

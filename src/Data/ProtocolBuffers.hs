@@ -14,4 +14,8 @@ module Data.ProtocolBuffers
   , Fixed(..)
   ) where
 
-import Data.ProtocolBuffers.Internal
+import Data.ProtocolBuffers.Decode
+import Data.ProtocolBuffers.EmbeddedMessage
+import Data.ProtocolBuffers.Encode
+import Data.ProtocolBuffers.Types
+import Data.ProtocolBuffers.Wire

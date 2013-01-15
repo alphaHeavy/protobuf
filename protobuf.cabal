@@ -27,6 +27,10 @@ library
     Data.ProtocolBuffers
     Data.ProtocolBuffers.Internal
   other-modules:
+    Data.ProtocolBuffers.Decode
+    Data.ProtocolBuffers.EmbeddedMessage
+    Data.ProtocolBuffers.Encode
+    Data.ProtocolBuffers.Types
     Data.ProtocolBuffers.Wire
   build-depends:
     base              >= 3      && < 5,
