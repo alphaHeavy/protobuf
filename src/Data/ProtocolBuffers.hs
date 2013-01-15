@@ -12,8 +12,6 @@ module Data.ProtocolBuffers
   , Enumeration
   , EmbeddedMessage
   , GetEnum(..)
-  , Tag
-  , Field
   , Signed(..)
   , Fixed(..)
   ) where
