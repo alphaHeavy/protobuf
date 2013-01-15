@@ -37,7 +37,7 @@ module Data.ProtocolBuffers
   , GetEnum(..)
     -- * Value Selectors
   , Enumeration
-  , EmbeddedMessage
+  , EmbeddedMessage (..)
   , Signed(..)
   , Fixed(..)
   ) where
