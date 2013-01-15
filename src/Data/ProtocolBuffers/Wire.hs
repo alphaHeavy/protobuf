@@ -69,6 +69,14 @@ getField = do
     5 -> Fixed32Field   tag <$> getWord32le
     _ -> empty
 
+putField' :: Field -> Put
+putField' (VarintField    t val) = putField t 0 >> putVarUInt val
+putField' (Fixed64Field   t val) = putField t 1 >> putVarUInt val
+putField' (DelimitedField t val) = putField t 2 >> putVarUInt (B.length val) >> putByteString val
+putField' (StartField     t    ) = putField t 3
+putField' (EndField       t    ) = putField t 4
+putField' (Fixed32Field   t val) = putField t 5 >> putVarUInt val
+
 putField :: Tag -> Word32 -> Put
 putField tag typ = putVarUInt $ tag `shiftL` 3 .|. (typ .&. 7)
 
@@ -121,6 +129,10 @@ deriving instance Wire a => Wire (First a)
 deriving instance Wire a => Wire (Last a)
 deriving instance Wire a => Wire (Product a)
 deriving instance Wire a => Wire (Sum a)
+
+instance Wire Field where
+  decodeWire = pure
+  encodeWire _ = putField'
 
 instance Wire a => Wire (Maybe a) where
   decodeWire = fmap Just . decodeWire

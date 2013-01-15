@@ -10,6 +10,8 @@ module Data.ProtocolBuffers.Encode
   ) where
 
 import Data.Foldable
+import Data.HashMap.Strict (HashMap)
+import qualified Data.HashMap.Strict as HashMap
 import Data.Serialize.Put
 import Data.Tagged
 import qualified Data.TypeLevel as Tl
@@ -22,6 +24,10 @@ class Encode (a :: *) where
   encode :: a -> Put
   default encode :: (Generic a, GEncode (Rep a)) => a -> Put
   encode = gencode . from
+
+instance Encode (HashMap Tag [Field]) where
+  encode = traverse_ step . HashMap.toList where
+    step = uncurry (traverse_ . encodeWire)
 
 class GEncode (f :: * -> *) where
   gencode :: f a -> Put

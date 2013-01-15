@@ -47,6 +47,9 @@ class Decode (a :: *) where
   default decode :: (Alternative m, Monad m, Generic a, GDecode (Rep a)) => HashMap Tag [Field] -> m a
   decode = fmap to . gdecode
 
+instance Decode (HashMap Tag [Field]) where
+  decode = pure
+
 class GDecode (f :: * -> *) where
   gdecode :: (Alternative m, Monad m) => HashMap Tag [Field] -> m (f a)
 
