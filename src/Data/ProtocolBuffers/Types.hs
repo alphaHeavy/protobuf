@@ -52,6 +52,14 @@ instance GetValue (Required n a) where
 
 newtype Enumeration (a :: *) = Enumeration Int deriving (Eq, NFData, Ord, Show)
 
+instance Enum (Enumeration a) where
+  toEnum = Enumeration
+  fromEnum (Enumeration a) = a
+
+instance (Bounded a, Enum a) => Bounded (Enumeration a) where
+  minBound = Enumeration (fromEnum (minBound :: a))
+  maxBound = Enumeration (fromEnum (maxBound :: a))
+
 instance Monoid (Enumeration a) where
   -- error case is handled by getEnum but we're exposing the instance :-(
   -- really should be a Semigroup instance... if we want a semigroup dependency
