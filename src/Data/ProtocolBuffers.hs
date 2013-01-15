@@ -1,5 +1,6 @@
 module Data.ProtocolBuffers
   ( Encode(..)
+  , encodeMessage
   , Decode(..)
   , decodeMessage
   , decodeLengthPrefixedMessage

@@ -7,6 +7,7 @@
 
 module Data.ProtocolBuffers.Encode
   ( Encode(..)
+  , encodeMessage
   ) where
 
 import Data.Foldable
@@ -19,6 +20,9 @@ import qualified Data.TypeLevel as Tl
 import GHC.Generics
 
 import Data.ProtocolBuffers.Wire
+
+encodeMessage :: Encode a => a -> Put
+encodeMessage = encode
 
 class Encode (a :: *) where
   encode :: a -> Put
