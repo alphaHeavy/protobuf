@@ -7,7 +7,28 @@ module Data.ProtocolBuffers
   , Decode(..)
   , decodeMessage
   , decodeLengthPrefixedMessage
+
     -- * Field Tags
+    -- |
+    -- Restricted type aliases of 'Data.Tagged.Tagged'. Follow these rules to define fields supported by the generic encoder/decoder:
+    --
+    -- * The 'n' phantom type parameter specifies the Protocol Buffers field tag (id).
+    --
+    -- * Field tags /must/ be an instance of 'Data.TypeLevel.Nat'.
+    --
+    -- * Field types /must/ be an instance of 'Data.Foldable.Foldable' to support encoding.
+    --
+    -- * Field types /should/ be an instance of 'Data.Monoid.Monoid' to support decoding.
+    --   For types that are not already 'Data.Monoid.Monoid' instances,
+    --   the use of 'Data.Monoid.Last' models the behavior recommended by the Protocol Buffers documentation.
+    --
+    -- @
+    -- data Foo = Foo
+    --   { field1 :: 'Required' 'Data.TypeLevel.D1' ('Data.Monoid.Last' 'Data.Int.Int64') -- ^ The last field with tag = 1
+    --   , field2 :: 'Optional' 'Data.TypeLevel.D2' ('Data.Monoid.Last' 'Data.Text.Text') -- ^ The last field with tag = 2
+    --   , field3 :: 'Repeated' 'Data.TypeLevel.D3' 'Prelude.Bool' -- ^ All fields with tag = 3, ordering is preserved
+    --   }
+    -- @
   , Required
   , Optional
   , Repeated
