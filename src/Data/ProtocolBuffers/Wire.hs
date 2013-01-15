@@ -51,7 +51,7 @@ data Field
   | StartField     {-# UNPACK #-} !Tag
   | EndField       {-# UNPACK #-} !Tag
   | Fixed32Field   {-# UNPACK #-} !Tag {-# UNPACK #-} !Word32
-    deriving Show
+    deriving (Eq, Ord, Show)
 
 getVarintPrefixedBS :: Get ByteString
 getVarintPrefixedBS = getBytes =<< getVarInt
@@ -217,10 +217,10 @@ instance Wire T.Text where
   decodeWire _ = empty
   encodeWire t = encodeWire t . T.encodeUtf8
 
-instance Wire (Enumeration a) where
+instance Enum a => Wire (Enumeration a) where
   decodeWire f = Enumeration . c <$> decodeWire f where
-    c :: Int32 -> Int
-    c = fromIntegral
+    c :: Int32 -> a
+    c = toEnum . fromIntegral
   encodeWire t (Enumeration a) = encodeWire t . c $ fromEnum a where
     c :: Int -> Int32
     c = fromIntegral

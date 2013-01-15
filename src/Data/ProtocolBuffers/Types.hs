@@ -1,4 +1,8 @@
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE OverlappingInstances #-}
@@ -19,8 +23,10 @@ module Data.ProtocolBuffers.Types
 
 import Control.DeepSeq (NFData)
 import Control.Monad.Identity
+import Data.Foldable
 import Data.Monoid
 import Data.Tagged
+import Data.Traversable
 
 -- field rules
 type Optional (n :: *) a = Tagged n (Maybe a)
@@ -50,20 +56,14 @@ instance GetValue (Required n a) where
   getValue = runIdentity . unTagged
   putValue = Tagged . Identity
 
-newtype Enumeration (a :: *) = Enumeration Int deriving (Eq, NFData, Ord, Show)
-
-instance Enum (Enumeration a) where
-  toEnum = Enumeration
-  fromEnum (Enumeration a) = a
-
-instance (Bounded a, Enum a) => Bounded (Enumeration a) where
-  minBound = Enumeration (fromEnum (minBound :: a))
-  maxBound = Enumeration (fromEnum (maxBound :: a))
+-- | A newtype wrapper used to distinguish enums from other field types.
+newtype Enumeration a = Enumeration a
+  deriving (Bounded, Eq, Enum, Foldable, Functor, Ord, NFData, Show, Traversable)
 
 instance Monoid (Enumeration a) where
   -- error case is handled by getEnum but we're exposing the instance :-(
   -- really should be a Semigroup instance... if we want a semigroup dependency
-  mempty = Enumeration (error "Empty Enumeration")
+  mempty = Enumeration $ error "Empty Enumeration"
   _ `mappend` x = x
 
 class GetEnum a where
@@ -71,10 +71,10 @@ class GetEnum a where
   getEnum :: a -> GetEnumResult a
   putEnum :: GetEnumResult a -> a
 
-instance Enum a => GetEnum (Enumeration a) where
+instance GetEnum (Enumeration a) where
   type GetEnumResult (Enumeration a) = a
-  getEnum (Enumeration x) = toEnum x
-  putEnum = Enumeration . fromEnum
+  getEnum (Enumeration x) = x
+  putEnum = Enumeration
 
 instance Enum a => GetEnum (Optional n (Enumeration a)) where
   type GetEnumResult (Tagged n (Maybe (Enumeration a))) = Maybe a
