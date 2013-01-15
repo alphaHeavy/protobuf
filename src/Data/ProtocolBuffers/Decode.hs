@@ -53,6 +53,7 @@ class Decode (a :: *) where
   default decode :: (Generic a, GDecode (Rep a)) => HashMap Tag [Field] -> Get a
   decode = fmap to . gdecode
 
+-- | Untyped message decoding, @ 'decode' = 'id' @
 instance Decode (HashMap Tag [Field]) where
   decode = pure
 

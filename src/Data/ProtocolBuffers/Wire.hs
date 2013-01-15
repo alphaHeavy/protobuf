@@ -42,8 +42,12 @@ import Data.Binary.IEEE754 (wordToDouble, wordToFloat)
 
 import Data.ProtocolBuffers.Types
 
+-- |
+-- Field identifiers
 type Tag = Word32
 
+-- |
+-- A representation of the wire format
 data Field
   = VarintField    {-# UNPACK #-} !Tag {-# UNPACK #-} !Word64
   | Fixed64Field   {-# UNPACK #-} !Tag {-# UNPACK #-} !Word64

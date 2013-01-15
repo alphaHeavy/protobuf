@@ -42,6 +42,7 @@ class Encode (a :: *) where
   default encode :: (Generic a, GEncode (Rep a)) => a -> Put
   encode = gencode . from
 
+-- | Untyped message encoding
 instance Encode (HashMap Tag [Field]) where
   encode = traverse_ step . HashMap.toList where
     step = uncurry (traverse_ . encodeWire)
