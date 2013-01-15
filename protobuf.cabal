@@ -25,9 +25,16 @@ library
     src
   exposed-modules:
     Data.ProtocolBuffers
+    Data.ProtocolBuffers.Internal
+  other-modules:
+    Data.ProtocolBuffers.Decode
+    Data.ProtocolBuffers.EmbeddedMessage
+    Data.ProtocolBuffers.Encode
+    Data.ProtocolBuffers.Types
+    Data.ProtocolBuffers.Wire
   build-depends:
     base              >= 3      && < 5,
-    bytestring        >= 0.9.1  && < 0.10,
+    bytestring,
     cereal,
     data-binary-ieee754,
     deepseq,
