@@ -53,7 +53,7 @@ instance Decode (HashMap Tag [Field]) where
   decode = pure
 
 class GDecode (f :: * -> *) where
-  gdecode :: (Alternative m, Monad m) => HashMap Tag [Field] -> m (f a)
+  gdecode :: HashMap Tag [Field] -> Get (f a)
 
 instance GDecode a => GDecode (M1 i c a) where
   gdecode = fmap M1 . gdecode
