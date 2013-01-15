@@ -136,11 +136,13 @@ deriving instance EncodeWire a => EncodeWire (First a)
 deriving instance EncodeWire a => EncodeWire (Last a)
 deriving instance EncodeWire a => EncodeWire (Product a)
 deriving instance EncodeWire a => EncodeWire (Sum a)
+deriving instance EncodeWire a => EncodeWire (Optionally a)
 
 deriving instance DecodeWire a => DecodeWire (First a)
 deriving instance DecodeWire a => DecodeWire (Last a)
 deriving instance DecodeWire a => DecodeWire (Product a)
 deriving instance DecodeWire a => DecodeWire (Sum a)
+deriving instance DecodeWire a => DecodeWire (Optionally a)
 
 instance EncodeWire Field where
   encodeWire _ = putField
