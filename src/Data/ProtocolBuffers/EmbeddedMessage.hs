@@ -37,7 +37,7 @@ instance (Encode m, Decode m) => Wire (EmbeddedMessage m) where
   decodeWire (DelimitedField _ bs) =
     case runGet decodeMessage bs of
       Right val -> pure $ EmbeddedMessage val
-      Left _err -> empty
+      Left err  -> fail $ "Embedded message decoding failed: " ++ show err
   decodeWire _ = empty
   encodeWire t (EmbeddedMessage m) =
     encodeWire t . runPut $ encode m
