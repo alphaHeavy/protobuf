@@ -8,8 +8,10 @@
 module Data.ProtocolBuffers.Encode
   ( Encode(..)
   , encodeMessage
+  , encodeLengthPrefixedMessage
   ) where
 
+import qualified Data.ByteString as B
 import Data.Foldable
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
@@ -23,6 +25,13 @@ import Data.ProtocolBuffers.Wire
 
 encodeMessage :: Encode a => a -> Put
 encodeMessage = encode
+
+encodeLengthPrefixedMessage :: Encode a => a -> Put
+{-# INLINE encodeLengthPrefixedMessage #-}
+encodeLengthPrefixedMessage msg = do
+  let msg' = runPut $ encodeMessage msg
+  putWord32le . fromIntegral $ B.length msg'
+  putByteString msg'
 
 class Encode (a :: *) where
   encode :: a -> Put
