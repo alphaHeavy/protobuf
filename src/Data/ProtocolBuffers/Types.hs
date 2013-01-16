@@ -17,6 +17,7 @@ module Data.ProtocolBuffers.Types
   , Optional
   , Repeated
   , Enumeration(..)
+  , Optionally(..)
   , GetValue(..)
   , GetEnum(..)
   ) where
@@ -29,7 +30,7 @@ import Data.Tagged
 import Data.Traversable
 
 -- | Optional fields. Values that are not found will return 'Nothing'.
-type Optional (n :: *) a = Tagged n (Maybe a)
+type Optional (n :: *) a = Tagged n (Optionally a)
 
 -- | Required fields. Parsing will return 'Control.Alternative.empty' if a 'Required' value is not found while decoding.
 type Required (n :: *) a = Tagged n (Identity a)
@@ -48,11 +49,14 @@ class GetValue a where
   -- | Wrap it back up again.
   putValue :: GetValueType a -> a
 
+newtype Optionally a = Optionally {runOptionally :: a}
+  deriving (Bounded, Eq, Enum, Foldable, Functor, Monoid, Ord, NFData, Show, Traversable)
+
 -- | A 'Maybe' lens on an 'Optional' field.
 instance GetValue (Optional n a) where
-  type GetValueType (Tagged n (Maybe a)) = Maybe a
-  getValue = unTagged
-  putValue = Tagged
+  type GetValueType (Tagged n (Optionally a)) = a
+  getValue = runOptionally . unTagged
+  putValue = Tagged . Optionally
 
 -- | A list lens on an 'Repeated' field.
 instance GetValue (Repeated n a) where
@@ -90,9 +94,9 @@ instance GetEnum (Enumeration a) where
   putEnum = Enumeration
 
 instance Enum a => GetEnum (Optional n (Enumeration a)) where
-  type GetEnumResult (Tagged n (Maybe (Enumeration a))) = Maybe a
-  getEnum = fmap getEnum . unTagged
-  putEnum = Tagged . fmap putEnum
+  type GetEnumResult (Tagged n (Optionally (Enumeration a))) = a
+  getEnum = getEnum . runOptionally . unTagged
+  putEnum = Tagged . Optionally . putEnum
 
 instance Enum a => GetEnum (Required n (Enumeration a)) where
   type GetEnumResult (Tagged n (Identity (Enumeration a))) = a

@@ -16,7 +16,8 @@ module Data.ProtocolBuffers.Wire
   , GetEnum(..)
   , Signed(..)
   , Tag
-  , Wire(..)
+  , EncodeWire(..)
+  , DecodeWire(..)
   , fieldTag
   , getField
   , getVarInt
@@ -42,8 +43,12 @@ import Data.Binary.IEEE754 (wordToDouble, wordToFloat)
 
 import Data.ProtocolBuffers.Types
 
+-- |
+-- Field identifiers
 type Tag = Word32
 
+-- |
+-- A representation of the wire format
 data Field
   = VarintField    {-# UNPACK #-} !Tag {-# UNPACK #-} !Word64
   | Fixed64Field   {-# UNPACK #-} !Tag {-# UNPACK #-} !Word64
@@ -121,109 +126,154 @@ fieldTag f = case f of
   EndField       t   -> t
   Fixed32Field   t _ -> t
 
-class Wire a where
-  decodeWire :: Field -> Get a
+class EncodeWire a where
   encodeWire :: Tag -> a -> Put
 
-deriving instance Wire a => Wire (First a)
-deriving instance Wire a => Wire (Last a)
-deriving instance Wire a => Wire (Product a)
-deriving instance Wire a => Wire (Sum a)
+class DecodeWire a where
+  decodeWire :: Field -> Get a
 
-instance Wire Field where
-  decodeWire = pure
+deriving instance EncodeWire a => EncodeWire (First a)
+deriving instance EncodeWire a => EncodeWire (Last a)
+deriving instance EncodeWire a => EncodeWire (Product a)
+deriving instance EncodeWire a => EncodeWire (Sum a)
+deriving instance EncodeWire a => EncodeWire (Optionally a)
+
+deriving instance DecodeWire a => DecodeWire (First a)
+deriving instance DecodeWire a => DecodeWire (Last a)
+deriving instance DecodeWire a => DecodeWire (Product a)
+deriving instance DecodeWire a => DecodeWire (Sum a)
+deriving instance DecodeWire a => DecodeWire (Optionally a)
+
+instance EncodeWire Field where
   encodeWire _ = putField
 
-instance Wire a => Wire (Maybe a) where
-  decodeWire = fmap Just . decodeWire
+instance DecodeWire Field where
+  decodeWire = pure
+
+instance EncodeWire a => EncodeWire (Maybe a) where
   encodeWire t (Just a) = encodeWire t a
   encodeWire _ Nothing  = return ()
 
-instance Wire Int32 where
-  decodeWire (VarintField  _ val) = pure $ fromIntegral val
-  decodeWire _ = empty
+instance DecodeWire a => DecodeWire (Maybe a) where
+  decodeWire = fmap Just . decodeWire
+
+instance EncodeWire Int32 where
   encodeWire t val = putWireTag t 0 >> putVarSInt val
 
-instance Wire Int64 where
+instance DecodeWire Int32 where
   decodeWire (VarintField  _ val) = pure $ fromIntegral val
   decodeWire _ = empty
+
+instance EncodeWire Int64 where
   encodeWire t val = putWireTag t 0 >> putVarSInt val
 
-instance Wire Word32 where
+instance DecodeWire Int64 where
   decodeWire (VarintField  _ val) = pure $ fromIntegral val
   decodeWire _ = empty
+
+instance EncodeWire Word32 where
   encodeWire t val = putWireTag t 0 >> putVarUInt val
 
-instance Wire Word64 where
+instance DecodeWire Word32 where
+  decodeWire (VarintField  _ val) = pure $ fromIntegral val
+  decodeWire _ = empty
+
+instance EncodeWire Word64 where
+  encodeWire t val = putWireTag t 0 >> putVarUInt val
+
+instance DecodeWire Word64 where
   decodeWire (VarintField  _ val) = pure val
   decodeWire _ = empty
-  encodeWire t val = putWireTag t 0 >> putVarUInt val
 
-instance Wire (Signed Int32) where
-  decodeWire (VarintField  _ val) = pure $ Signed (zzDecode32 (fromIntegral val))
-  decodeWire _ = empty
+instance EncodeWire (Signed Int32) where
   encodeWire t (Signed val) = putWireTag t 0 >> (putVarSInt $ zzEncode32 val)
 
-instance Wire (Signed Int64) where
-  decodeWire (VarintField  _ val) = pure $ Signed (zzDecode64 (fromIntegral val))
+instance DecodeWire (Signed Int32) where
+  decodeWire (VarintField  _ val) = pure $ Signed (zzDecode32 (fromIntegral val))
   decodeWire _ = empty
+
+instance EncodeWire (Signed Int64) where
   encodeWire t (Signed val) = putWireTag t 0 >> (putVarSInt $ zzEncode64 val)
 
-instance Wire (Fixed Int32) where
-  decodeWire (Fixed32Field _ val) = pure $ Fixed (fromIntegral val)
+instance DecodeWire (Signed Int64) where
+  decodeWire (VarintField  _ val) = pure $ Signed (zzDecode64 (fromIntegral val))
   decodeWire _ = empty
+
+instance EncodeWire (Fixed Int32) where
   encodeWire t (Fixed val) = putWireTag t 5 >> (putWord32le $ fromIntegral val)
 
-instance Wire (Fixed Int64) where
-  decodeWire (Fixed64Field _ val) = pure $ Fixed (fromIntegral val)
+instance DecodeWire (Fixed Int32) where
+  decodeWire (Fixed32Field _ val) = pure $ Fixed (fromIntegral val)
   decodeWire _ = empty
+
+instance EncodeWire (Fixed Int64) where
   encodeWire t (Fixed val) = putWireTag t 1 >> (putWord64le $ fromIntegral val)
 
-instance Wire (Fixed Word32) where
-  decodeWire (Fixed32Field _ val) = pure $ Fixed val
+instance DecodeWire (Fixed Int64) where
+  decodeWire (Fixed64Field _ val) = pure $ Fixed (fromIntegral val)
   decodeWire _ = empty
+
+instance EncodeWire (Fixed Word32) where
   encodeWire t (Fixed val) = putWireTag t 5 >> putWord32le val
 
-instance Wire (Fixed Word64) where
-  decodeWire (Fixed64Field _ val) = pure $ Fixed val
+instance DecodeWire (Fixed Word32) where
+  decodeWire (Fixed32Field _ val) = pure $ Fixed val
   decodeWire _ = empty
+
+instance EncodeWire (Fixed Word64) where
   encodeWire t (Fixed val) = putWireTag t 1 >> putWord64le val
 
-instance Wire Bool where
-  decodeWire (VarintField _ val) = pure $ val /= 0
+instance DecodeWire (Fixed Word64) where
+  decodeWire (Fixed64Field _ val) = pure $ Fixed val
   decodeWire _ = empty
+
+instance EncodeWire Bool where
   encodeWire t val = putWireTag t 0 >> putVarUInt (if val == False then (0 :: Int32) else 1)
 
-instance Wire Float where
-  decodeWire (Fixed32Field _ val) = pure $ wordToFloat val
+instance DecodeWire Bool where
+  decodeWire (VarintField _ val) = pure $ val /= 0
   decodeWire _ = empty
+
+instance EncodeWire Float where
   encodeWire t val = putWireTag t 5 >> putFloat32le val
 
-instance Wire Double where
-  decodeWire (Fixed64Field _ val) = pure $ wordToDouble val
+instance DecodeWire Float where
+  decodeWire (Fixed32Field _ val) = pure $ wordToFloat val
   decodeWire _ = empty
+
+instance EncodeWire Double where
   encodeWire t val = putWireTag t 1 >> putFloat64le val
 
-instance Wire ByteString where
-  decodeWire (DelimitedField _ bs) = pure bs
+instance DecodeWire Double where
+  decodeWire (Fixed64Field _ val) = pure $ wordToDouble val
   decodeWire _ = empty
+
+instance EncodeWire ByteString where
   encodeWire t val = putWireTag t 2 >> putVarUInt (B.length val) >> putByteString val
 
-instance Wire T.Text where
+instance DecodeWire ByteString where
+  decodeWire (DelimitedField _ bs) = pure bs
+  decodeWire _ = empty
+
+instance EncodeWire T.Text where
+  encodeWire t = encodeWire t . T.encodeUtf8
+
+instance DecodeWire T.Text where
   decodeWire (DelimitedField _ bs) =
     case T.decodeUtf8' bs of
       Right val -> pure val
       Left err  -> fail $ "Decoding failed: " ++ show err
   decodeWire _ = empty
-  encodeWire t = encodeWire t . T.encodeUtf8
 
-instance Enum a => Wire (Enumeration a) where
-  decodeWire f = Enumeration . c <$> decodeWire f where
-    c :: Int32 -> a
-    c = toEnum . fromIntegral
+instance Enum a => EncodeWire (Enumeration a) where
   encodeWire t (Enumeration a) = encodeWire t $ c a where
     c :: a -> Int32
     c = fromIntegral . fromEnum
+
+instance Enum a => DecodeWire (Enumeration a) where
+  decodeWire f = Enumeration . c <$> decodeWire f where
+    c :: Int32 -> a
+    c = toEnum . fromIntegral
 
 -- |
 -- Signed integers are stored in a zz-encoded form.

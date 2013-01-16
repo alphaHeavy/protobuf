@@ -42,6 +42,7 @@ class Encode (a :: *) where
   default encode :: (Generic a, GEncode (Rep a)) => a -> Put
   encode = gencode . from
 
+-- | Untyped message encoding
 instance Encode (HashMap Tag [Field]) where
   encode = traverse_ step . HashMap.toList where
     step = uncurry (traverse_ . encodeWire)
@@ -59,6 +60,6 @@ instance (GEncode a, GEncode b) => GEncode (a :+: b) where
   gencode (L1 x) = gencode x
   gencode (R1 y) = gencode y
 
-instance (Wire a, Tl.Nat n, Foldable f) => GEncode (K1 i (Tagged n (f a))) where
+instance (EncodeWire a, Tl.Nat n, Foldable f) => GEncode (K1 i (Tagged n (f a))) where
   gencode = traverse_ (encodeWire tag) . unTagged . unK1 where
     tag = fromIntegral $ Tl.toInt (undefined :: n)

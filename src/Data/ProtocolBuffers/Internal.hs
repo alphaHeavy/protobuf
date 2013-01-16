@@ -1,5 +1,6 @@
 module Data.ProtocolBuffers.Internal
-  ( Wire(..)
+  ( EncodeWire(..)
+  , DecodeWire(..)
   , Tag
   , Field
   ) where

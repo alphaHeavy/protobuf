@@ -53,6 +53,7 @@ class Decode (a :: *) where
   default decode :: (Generic a, GDecode (Rep a)) => HashMap Tag [Field] -> Get a
   decode = fmap to . gdecode
 
+-- | Untyped message decoding, @ 'decode' = 'id' @
 instance Decode (HashMap Tag [Field]) where
   decode = pure
 
@@ -68,21 +69,21 @@ instance (GDecode a, GDecode b) => GDecode (a :*: b) where
 instance (GDecode x, GDecode y) => GDecode (x :+: y) where
   gdecode msg = L1 <$> gdecode msg <|> R1 <$> gdecode msg
 
-instance (Wire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Optional n a)) where
+instance (DecodeWire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Optional n a)) where
   gdecode msg =
     let tag = fromIntegral $ Tl.toInt (undefined :: n)
     in case HashMap.lookup tag msg of
       Just val -> K1 . Tagged <$> foldMapM decodeWire val
       Nothing  -> pure $ K1 mempty
 
-instance (Wire a, Tl.Nat n) => GDecode (K1 i (Repeated n a)) where
+instance (DecodeWire a, Tl.Nat n) => GDecode (K1 i (Repeated n a)) where
   gdecode msg =
     let tag = fromIntegral $ Tl.toInt (undefined :: n)
     in case HashMap.lookup tag msg of
       Just val -> K1 . Tagged <$> traverse decodeWire val
       Nothing  -> pure $ K1 mempty
 
-instance (Wire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Required n a)) where
+instance (DecodeWire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Required n a)) where
   gdecode msg =
     let tag = fromIntegral $ Tl.toInt (undefined :: n)
     in case HashMap.lookup tag msg of
