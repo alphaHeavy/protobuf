@@ -4,7 +4,6 @@
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -154,8 +153,7 @@ instance DecodeWire Field where
   decodeWire = pure
 
 instance EncodeWire a => EncodeWire (Maybe a) where
-  encodeWire t (Just a) = encodeWire t a
-  encodeWire _ Nothing  = return ()
+  encodeWire t = traverse_ (encodeWire t)
 
 instance DecodeWire a => DecodeWire (Maybe a) where
   decodeWire = fmap Just . decodeWire
@@ -189,28 +187,28 @@ instance DecodeWire Word64 where
   decodeWire _ = empty
 
 instance EncodeWire (Signed Int32) where
-  encodeWire t (Signed val) = putWireTag t 0 >> (putVarSInt $ zzEncode32 val)
+  encodeWire t (Signed val) = putWireTag t 0 >> putVarSInt (zzEncode32 val)
 
 instance DecodeWire (Signed Int32) where
   decodeWire (VarintField  _ val) = pure $ Signed (zzDecode32 (fromIntegral val))
   decodeWire _ = empty
 
 instance EncodeWire (Signed Int64) where
-  encodeWire t (Signed val) = putWireTag t 0 >> (putVarSInt $ zzEncode64 val)
+  encodeWire t (Signed val) = putWireTag t 0 >> putVarSInt (zzEncode64 val)
 
 instance DecodeWire (Signed Int64) where
   decodeWire (VarintField  _ val) = pure $ Signed (zzDecode64 (fromIntegral val))
   decodeWire _ = empty
 
 instance EncodeWire (Fixed Int32) where
-  encodeWire t (Fixed val) = putWireTag t 5 >> (putWord32le $ fromIntegral val)
+  encodeWire t (Fixed val) = putWireTag t 5 >> putWord32le (fromIntegral val)
 
 instance DecodeWire (Fixed Int32) where
   decodeWire (Fixed32Field _ val) = pure $ Fixed (fromIntegral val)
   decodeWire _ = empty
 
 instance EncodeWire (Fixed Int64) where
-  encodeWire t (Fixed val) = putWireTag t 1 >> (putWord64le $ fromIntegral val)
+  encodeWire t (Fixed val) = putWireTag t 1 >> putWord64le (fromIntegral val)
 
 instance DecodeWire (Fixed Int64) where
   decodeWire (Fixed64Field _ val) = pure $ Fixed (fromIntegral val)
