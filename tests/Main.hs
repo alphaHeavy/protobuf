@@ -51,41 +51,43 @@ prop_roundtrip msg = do
     Right msg' -> return $ msg == msg'
     Left err   -> fail err
 
-prop_reify :: forall a r . NonNegative Int32 -> Last a -> (forall n . Nat n => OneValue n a -> r) -> r
-prop_reify (NonNegative n) a f = reifyIntegral n g where
-  g :: forall n . Nat n => n -> r
-  g _ = f (OneValue (putValue a) :: OneValue n a)
+prop_reify :: forall a r . Last a -> (forall n . Nat n => OneValue n a -> Gen r) -> Gen r
+prop_reify a f = do
+  let g :: forall n . Nat n => n -> Gen r
+      g _ = f (OneValue (putValue a) :: OneValue n a)
+  -- according to https://developers.google.com/protocol-buffers/docs/proto
+  -- the max is 2^^29 - 1, or 536,870,911.
+  --
+  -- the min is set to 0 since reifyIntegral only supports naturals, which
+  -- is also recommended since these are encoded as varints which have
+  -- fairly high overhead for negative tags
+  n <- choose (0, 536870911)
+  reifyIntegral (n :: Int32) g
 
 prop_word32 :: Gen Bool
 prop_word32 = do
   val <- Last . Just <$> arbitrary
-  n <- arbitrary
-  prop_reify n (val :: Last Word32) prop_roundtrip
+  prop_reify (val :: Last Word32) prop_roundtrip
 
 prop_word64 :: Gen Bool
 prop_word64 = do
   val <- Last . Just <$> arbitrary
-  n <- arbitrary
-  prop_reify n (val :: Last Word64) prop_roundtrip
+  prop_reify (val :: Last Word64) prop_roundtrip
 
 prop_int32 :: Gen Bool
 prop_int32 = do
   val <- Last . Just <$> arbitrary
-  n <- arbitrary
-  prop_reify n (val :: Last Int32) prop_roundtrip
+  prop_reify (val :: Last Int32) prop_roundtrip
 
 prop_int64 :: Gen Bool
 prop_int64 = do
   val <- Last . Just <$> arbitrary
-  n <- arbitrary
-  prop_reify n (val :: Last Int64) prop_roundtrip
+  prop_reify (val :: Last Int64) prop_roundtrip
 
 prop_float = do
   val <- Last . Just <$> arbitrary
-  n <- arbitrary
-  prop_reify n (val :: Last Float) prop_roundtrip
+  prop_reify (val :: Last Float) prop_roundtrip
 
 prop_double = do
   val <- Last . Just <$> arbitrary
-  n <- arbitrary
-  prop_reify n (val :: Last Double) prop_roundtrip
+  prop_reify (val :: Last Double) prop_roundtrip
