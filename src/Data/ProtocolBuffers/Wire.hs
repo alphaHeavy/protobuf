@@ -83,7 +83,10 @@ putField (EndField       t    ) = putWireTag t 4
 putField (Fixed32Field   t val) = putWireTag t 5 >> putVarUInt val
 
 putWireTag :: Tag -> Word32 -> Put
-putWireTag tag typ = putVarUInt $ tag `shiftL` 3 .|. (typ .&. 7)
+putWireTag tag typ
+  | tag <= 0x1FFFFFFF, typ <= 7 = putVarUInt $ tag `shiftL` 3 .|. (typ .&. 7)
+  | tag  > 0x1FFFFFFF = fail $ "Wire tag out of range: "  ++ show tag
+  | otherwise         = fail $ "Wire type out of range: " ++ show typ
 
 getVarInt :: (Integral a, Bits a) => Get a
 getVarInt = go 0 0 where

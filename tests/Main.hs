@@ -30,6 +30,7 @@ main = defaultMain tests
 tests =
   [ testGroup "Required Single Values" requiredSingleValueTests
   , testGroup "Optional Single Values" optionalSingleValueTests
+  , testGroup "Tags Out of Range" tagsOutOfRangeTests
   ]
 
 requiredSingleValueTests =
@@ -64,6 +65,10 @@ optionalSingleValueTests =
   , testProperty "bool"     prop_opt_bool
   ]
 
+tagsOutOfRangeTests =
+  [ testProperty "word32" prop_req_word32_out_of_range
+  ]
+
 data RequiredValue n a = RequiredValue (Required n (Last a))
   deriving (Eq, Generic)
 
@@ -85,6 +90,19 @@ prop_req_roundtrip msg = do
     Right msg' -> return $ msg == msg'
     Left err   -> fail err
 
+prop_req_reify_out_of_range :: forall a r . Last a -> (forall n . Nat n => RequiredValue n a -> Gen r) -> Gen r
+prop_req_reify_out_of_range a f = do
+  let g :: forall n . Nat n => n -> Gen r
+      g _ = f (RequiredValue (putValue a) :: RequiredValue n a)
+  -- according to https://developers.google.com/protocol-buffers/docs/proto
+  -- the max is 2^^29 - 1, or 536,870,911.
+  --
+  -- the min is set to 0 since reifyIntegral only supports naturals, which
+  -- is also recommended since these are encoded as varints which have
+  -- fairly high overhead for negative tags
+  n <- choose (536870912, maxBound)
+  reifyIntegral (n :: Int32) g
+
 prop_req_reify :: forall a r . Last a -> (forall n . Nat n => RequiredValue n a -> Gen r) -> Gen r
 prop_req_reify a f = do
   let g :: forall n . Nat n => n -> Gen r
@@ -97,6 +115,11 @@ prop_req_reify a f = do
   -- fairly high overhead for negative tags
   n <- choose (0, 536870911)
   reifyIntegral (n :: Int32) g
+
+prop_req_word32_out_of_range :: Property
+prop_req_word32_out_of_range = expectFailure $ do
+  val <- Last . Just <$> arbitrary
+  prop_req_reify_out_of_range (val :: Last Word32) prop_req_roundtrip
 
 prop_req_word32 :: Gen Bool
 prop_req_word32 = do
