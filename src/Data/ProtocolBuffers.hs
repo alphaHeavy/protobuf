@@ -74,7 +74,7 @@ module Data.ProtocolBuffers
     -- * Value Selectors
     --
   , Enumeration
-  , EmbeddedMessage
+  , EmbeddedMessage (..)
   , Optionally
   , Signed(..)
   , Fixed(..)
