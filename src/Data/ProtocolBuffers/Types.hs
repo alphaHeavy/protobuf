@@ -41,6 +41,9 @@ type Repeated (n :: *) a = Tagged n [a]
 instance Show a => Show (Required n a) where
   show (Tagged (Identity x)) = show (Tagged x :: Tagged n a)
 
+instance Eq a => Eq (Required n a) where
+  Tagged (Identity x) == Tagged (Identity y) = x == y
+
 -- | What will become an isomorphism lens...
 class GetValue a where
   type GetValueType a :: *
