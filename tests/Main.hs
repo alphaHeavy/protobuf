@@ -121,14 +121,17 @@ prop_sfixed64 = do
   val <- Last . Just . Pb.Fixed <$> arbitrary
   prop_reify (val :: Last (Pb.Fixed Word64)) prop_roundtrip
 
+prop_float :: Gen Bool
 prop_float = do
   val <- Last . Just <$> arbitrary
   prop_reify (val :: Last Float) prop_roundtrip
 
+prop_double :: Gen Bool
 prop_double = do
   val <- Last . Just <$> arbitrary
   prop_reify (val :: Last Double) prop_roundtrip
 
+prop_bool :: Gen Bool
 prop_bool = do
   val <- Last . Just <$> arbitrary
   prop_reify (val :: Last Bool) prop_roundtrip
