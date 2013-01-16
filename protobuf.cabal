@@ -2,7 +2,7 @@ name:                protobuf
 version:             0.1
 synopsis:            Implementation of Google Protocol Buffers.
 description:
-  High level bindings to xz-utils.
+  Protocol Buffers for GHC.Generics
   .
 license:             BSD3
 license-file:        LICENSE
