@@ -13,8 +13,8 @@ import GHC.Generics (Generic)
 
 import Control.Applicative
 import qualified Data.ByteString as B
-import Data.ProtocolBuffers
-import Data.ProtocolBuffers.Internal
+import Data.ProtocolBuffers as Pb
+import Data.ProtocolBuffers.Internal as Pb
 import Data.Int
 import Data.List
 import Data.Monoid
@@ -30,12 +30,19 @@ tests =
   ]
 
 singleValueTests =
-  [ testProperty "Int32"  prop_int32
-  , testProperty "Int64"  prop_int64
-  , testProperty "Word32" prop_word32
-  , testProperty "Word64" prop_word64
-  , testProperty "Float"  prop_float
-  , testProperty "Double" prop_double
+  [ testProperty "int32"    prop_int32
+  , testProperty "int64"    prop_int64
+  , testProperty "word32"   prop_word32
+  , testProperty "word64"   prop_word64
+  , testProperty "sint32"   prop_sint32
+  , testProperty "sint64"   prop_sint64
+  , testProperty "fixed32"  prop_fixed32
+  , testProperty "fixed64"  prop_fixed64
+  , testProperty "sfixed32" prop_sfixed32
+  , testProperty "sfixed64" prop_sfixed64
+  , testProperty "float"    prop_float
+  , testProperty "double"   prop_double
+  , testProperty "bool"     prop_bool
   ]
 
 data OneValue n a = OneValue (Required n (Last a))
@@ -84,6 +91,36 @@ prop_int64 = do
   val <- Last . Just <$> arbitrary
   prop_reify (val :: Last Int64) prop_roundtrip
 
+prop_sint32 :: Gen Bool
+prop_sint32 = do
+  val <- Last . Just . Signed <$> arbitrary
+  prop_reify (val :: Last (Signed Int32)) prop_roundtrip
+
+prop_sint64 :: Gen Bool
+prop_sint64 = do
+  val <- Last . Just . Signed <$> arbitrary
+  prop_reify (val :: Last (Signed Int64)) prop_roundtrip
+
+prop_fixed32 :: Gen Bool
+prop_fixed32 = do
+  val <- Last . Just . Pb.Fixed <$> arbitrary
+  prop_reify (val :: Last (Pb.Fixed Int32)) prop_roundtrip
+
+prop_fixed64 :: Gen Bool
+prop_fixed64 = do
+  val <- Last . Just . Pb.Fixed <$> arbitrary
+  prop_reify (val :: Last (Pb.Fixed Int64)) prop_roundtrip
+
+prop_sfixed32 :: Gen Bool
+prop_sfixed32 = do
+  val <- Last . Just . Pb.Fixed <$> arbitrary
+  prop_reify (val :: Last (Pb.Fixed Word32)) prop_roundtrip
+
+prop_sfixed64 :: Gen Bool
+prop_sfixed64 = do
+  val <- Last . Just . Pb.Fixed <$> arbitrary
+  prop_reify (val :: Last (Pb.Fixed Word64)) prop_roundtrip
+
 prop_float = do
   val <- Last . Just <$> arbitrary
   prop_reify (val :: Last Float) prop_roundtrip
@@ -91,3 +128,7 @@ prop_float = do
 prop_double = do
   val <- Last . Just <$> arbitrary
   prop_reify (val :: Last Double) prop_roundtrip
+
+prop_bool = do
+  val <- Last . Just <$> arbitrary
+  prop_reify (val :: Last Bool) prop_roundtrip
