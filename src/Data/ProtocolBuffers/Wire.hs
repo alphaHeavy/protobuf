@@ -47,14 +47,15 @@ import Data.ProtocolBuffers.Types
 type Tag = Word32
 
 -- |
--- A representation of the wire format
+-- A representation of the wire format as described in
+-- <https://developers.google.com/protocol-buffers/docs/encoding#structure>
 data Field
-  = VarintField    {-# UNPACK #-} !Tag {-# UNPACK #-} !Word64
-  | Fixed64Field   {-# UNPACK #-} !Tag {-# UNPACK #-} !Word64
-  | DelimitedField {-# UNPACK #-} !Tag !ByteString
-  | StartField     {-# UNPACK #-} !Tag
-  | EndField       {-# UNPACK #-} !Tag
-  | Fixed32Field   {-# UNPACK #-} !Tag {-# UNPACK #-} !Word32
+  = VarintField    {-# UNPACK #-} !Tag {-# UNPACK #-} !Word64 -- ^ For: int32, int64, uint32, uint64, sint32, sint64, bool, enum
+  | Fixed64Field   {-# UNPACK #-} !Tag {-# UNPACK #-} !Word64 -- ^ For: fixed64, sfixed64, double
+  | DelimitedField {-# UNPACK #-} !Tag !ByteString -- ^ For: string, bytes, embedded messages, packed repeated fields
+  | StartField     {-# UNPACK #-} !Tag -- ^ For: groups (deprecated)
+  | EndField       {-# UNPACK #-} !Tag -- ^ For: groups (deprecated)
+  | Fixed32Field   {-# UNPACK #-} !Tag {-# UNPACK #-} !Word32 -- ^ For: fixed32, sfixed32, float
     deriving (Eq, Ord, Show)
 
 getVarintPrefixedBS :: Get ByteString

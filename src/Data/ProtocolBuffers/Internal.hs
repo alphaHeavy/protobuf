@@ -1,8 +1,8 @@
 module Data.ProtocolBuffers.Internal
-  ( EncodeWire(..)
+  ( Tag
+  , Field(..)
+  , EncodeWire(..)
   , DecodeWire(..)
-  , Tag
-  , Field
   ) where
 
 import Data.ProtocolBuffers.Wire
