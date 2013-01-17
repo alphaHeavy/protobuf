@@ -15,10 +15,11 @@ module Data.ProtocolBuffers.Decode
 import Control.Applicative
 import Control.Monad
 import Control.Monad.Identity
+import qualified Data.ByteString as B
 import Data.Foldable
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
-import Data.Int (Int32)
+import Data.Int (Int64)
 import Data.Monoid
 import Data.Serialize.Get
 import Data.Tagged
@@ -46,8 +47,13 @@ decodeMessage = decode =<< go HashMap.empty where
 decodeLengthPrefixedMessage :: Decode a => Get a
 {-# INLINE decodeLengthPrefixedMessage #-}
 decodeLengthPrefixedMessage = do
-  len :: Int32 <- getVarInt
-  isolate (fromIntegral len) decodeMessage
+  len :: Int64 <- getVarInt
+  bs <- getBytes $ fromIntegral len
+  case runGetState decodeMessage bs 0 of
+    Right (val, bs')
+      | B.null bs' -> return val
+      | otherwise  -> fail $ "Unparsed bytes leftover in decodeLengthPrefixedMessage: " ++ show (B.length bs')
+    Left err  -> fail err
 
 class Decode (a :: *) where
   decode :: HashMap Tag [Field] -> Get a
