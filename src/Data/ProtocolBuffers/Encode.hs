@@ -34,7 +34,7 @@ encodeLengthPrefixedMessage :: Encode a => a -> Put
 {-# INLINE encodeLengthPrefixedMessage #-}
 encodeLengthPrefixedMessage msg = do
   let msg' = runPut $ encodeMessage msg
-  putWord32le . fromIntegral $ B.length msg'
+  putVarUInt $ B.length msg'
   putByteString msg'
 
 class Encode (a :: *) where

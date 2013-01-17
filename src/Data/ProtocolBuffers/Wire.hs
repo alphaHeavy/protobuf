@@ -21,6 +21,8 @@ module Data.ProtocolBuffers.Wire
   , getField
   , getVarInt
   , getVarintPrefixedBS
+  , putVarSInt
+  , putVarUInt
   ) where
 
 import Control.Applicative
