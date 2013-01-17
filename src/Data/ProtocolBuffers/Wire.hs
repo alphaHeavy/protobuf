@@ -191,28 +191,28 @@ instance EncodeWire (Signed Int32) where
   encodeWire t (Signed val) = putWireTag t 0 >> putVarSInt (zzEncode32 val)
 
 instance DecodeWire (Signed Int32) where
-  decodeWire (VarintField  _ val) = pure $ Signed (zzDecode32 (fromIntegral val))
+  decodeWire (VarintField  _ val) = pure . Signed . zzDecode32 $ fromIntegral val
   decodeWire _ = empty
 
 instance EncodeWire (Signed Int64) where
   encodeWire t (Signed val) = putWireTag t 0 >> putVarSInt (zzEncode64 val)
 
 instance DecodeWire (Signed Int64) where
-  decodeWire (VarintField  _ val) = pure $ Signed (zzDecode64 (fromIntegral val))
+  decodeWire (VarintField  _ val) = pure . Signed . zzDecode64 $ fromIntegral val
   decodeWire _ = empty
 
 instance EncodeWire (Fixed Int32) where
   encodeWire t (Fixed val) = putWireTag t 5 >> putWord32le (fromIntegral val)
 
 instance DecodeWire (Fixed Int32) where
-  decodeWire (Fixed32Field _ val) = pure $ Fixed (fromIntegral val)
+  decodeWire (Fixed32Field _ val) = pure . Fixed $ fromIntegral val
   decodeWire _ = empty
 
 instance EncodeWire (Fixed Int64) where
   encodeWire t (Fixed val) = putWireTag t 1 >> putWord64le (fromIntegral val)
 
 instance DecodeWire (Fixed Int64) where
-  decodeWire (Fixed64Field _ val) = pure $ Fixed (fromIntegral val)
+  decodeWire (Fixed64Field _ val) = pure . Fixed $ fromIntegral val
   decodeWire _ = empty
 
 instance EncodeWire (Fixed Word32) where
