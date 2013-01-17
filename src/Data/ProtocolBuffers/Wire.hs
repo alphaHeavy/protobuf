@@ -93,8 +93,8 @@ getVarInt = go 0 0 where
   go n !val = do
     b <- getWord8
     if testBit b 7
-      then go (n+7) (val .|. ((fromIntegral (b .&. 0x7F)) `shiftL` n))
-      else return $! val .|. ((fromIntegral b) `shiftL` n)
+      then go (n+7) (val .|. (fromIntegral (b .&. 0x7F) `shiftL` n))
+      else return $! val .|. (fromIntegral b `shiftL` n)
 
 -- This can be used on any Integral type and is needed for signed types; unsigned can use putVarUInt below.
 -- This has been changed to handle only up to 64 bit integral values (to match documentation).
@@ -230,7 +230,7 @@ instance DecodeWire (Fixed Word64) where
   decodeWire _ = empty
 
 instance EncodeWire Bool where
-  encodeWire t val = putWireTag t 0 >> putVarUInt (if val == False then (0 :: Int32) else 1)
+  encodeWire t val = putWireTag t 0 >> putVarUInt (if val then 1 else (0 :: Int32))
 
 instance DecodeWire Bool where
   decodeWire (VarintField _ val) = pure $ val /= 0
@@ -289,10 +289,10 @@ newtype Fixed a = Fixed a
 
 -- Taken from google's code, but I had to explcitly add fromIntegral in the right places:
 zzEncode32 :: Int32 -> Word32
-zzEncode32 x = fromIntegral ((x `shiftL` 1) `xor` (x `shiftR` 31))
+zzEncode32 x = fromIntegral ((x `shiftL` 1) `xor` x `shiftR` 31)
 zzEncode64 :: Int64 -> Word64
-zzEncode64 x = fromIntegral ((x `shiftL` 1) `xor` (x `shiftR` 63))
+zzEncode64 x = fromIntegral ((x `shiftL` 1) `xor` x `shiftR` 63)
 zzDecode32 :: Word32 -> Int32
-zzDecode32 w = (fromIntegral (w `shiftR` 1)) `xor` (negate (fromIntegral (w .&. 1)))
+zzDecode32 w = fromIntegral (w `shiftR` 1) `xor` negate (fromIntegral (w .&. 1))
 zzDecode64 :: Word64 -> Int64
-zzDecode64 w = (fromIntegral (w `shiftR` 1)) `xor` (negate (fromIntegral (w .&. 1)))
+zzDecode64 w = fromIntegral (w `shiftR` 1) `xor` negate (fromIntegral (w .&. 1))
