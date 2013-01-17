@@ -79,10 +79,10 @@ instance GetValue (Required n a) where
 newtype Enumeration a = Enumeration a
   deriving (Bounded, Eq, Enum, Foldable, Functor, Ord, NFData, Show, Traversable)
 
-instance Monoid (Enumeration a) where
+instance Enum a => Monoid (Enumeration a) where
   -- error case is handled by getEnum but we're exposing the instance :-(
   -- really should be a Semigroup instance... if we want a semigroup dependency
-  mempty = Enumeration $ error "Empty Enumeration"
+  mempty = Enumeration (toEnum 0)
   _ `mappend` x = x
 
 -- | Similar to 'GetValue' but specialized for 'Enumeration' to avoid overlap.
