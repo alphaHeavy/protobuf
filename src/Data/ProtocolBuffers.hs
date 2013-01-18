@@ -65,6 +65,7 @@ module Data.ProtocolBuffers
   , Required
   , Optional
   , Repeated
+  , Packed
 
     -- * Value Accessors
     --
@@ -74,6 +75,7 @@ module Data.ProtocolBuffers
     -- * Value Selectors
     --
   , Enumeration
+  , PackedList(..)
   , EmbeddedMessage (..)
   , Optionally
   , Signed(..)

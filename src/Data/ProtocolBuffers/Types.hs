@@ -75,6 +75,12 @@ instance GetValue (Repeated n a) where
   getValue = unTagged
   putValue = Tagged
 
+-- | A list lens on an 'Repeated' field.
+instance GetValue (Packed n a) where
+  type GetValueType (Tagged n (PackedList a)) = [a]
+  getValue = unPackedList . unTagged
+  putValue = Tagged . PackedList
+
 -- | An 'Identity' lens on an 'Required' field.
 instance GetValue (Required n a) where
   type GetValueType (Tagged n (Identity a)) = a
@@ -143,7 +149,7 @@ instance Enum a => GetEnum (Repeated n (Enumeration [a])) where
 
 -- |
 -- A list that is stored in a packed format.
-newtype PackedList a = PackedList [a]
+newtype PackedList a = PackedList {unPackedList :: [a]}
   deriving (Eq, Foldable, Functor, Monoid, NFData, Ord, Show, Traversable)
 
 -- |

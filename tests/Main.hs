@@ -1,8 +1,10 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 import Test.Framework (defaultMain, testGroup)
 import Test.Framework.Providers.HUnit
@@ -14,6 +16,8 @@ import Test.QuickCheck.Property
 import GHC.Generics (Generic)
 
 import Control.Applicative
+import Control.Monad
+import Control.Monad.Identity
 import qualified Data.ByteString as B
 import Data.ProtocolBuffers as Pb
 import Data.ProtocolBuffers.Internal as Pb
@@ -21,6 +25,8 @@ import Data.Int
 import Data.List
 import Data.Monoid
 import Data.Serialize
+import Data.Proxy
+import Data.Tagged
 import Data.Word
 import Data.TypeLevel.Num (Nat, reifyIntegral)
 
@@ -28,46 +34,99 @@ main :: IO ()
 main = defaultMain tests
 
 tests =
-  [ testGroup "Required Single Values" requiredSingleValueTests
+  [ testGroup "Primitive Wire" primitiveWireTests
+  , testGroup "Packed Wire" packedWireTests
+  , testGroup "Required Single Values" requiredSingleValueTests
   , testGroup "Optional Single Values" optionalSingleValueTests
   , testGroup "Tags Out of Range" tagsOutOfRangeTests
   ]
 
+primitiveWireTests =
+  [ testProperty "int32"    (prop_wire (Proxy :: Proxy Int32))
+  , testProperty "int64"    (prop_wire (Proxy :: Proxy Int64))
+  , testProperty "word32"   (prop_wire (Proxy :: Proxy Word32))
+  , testProperty "word64"   (prop_wire (Proxy :: Proxy Word64))
+  , testProperty "sint32"   (prop_wire (Proxy :: Proxy (Signed Int32)))
+  , testProperty "sint64"   (prop_wire (Proxy :: Proxy (Signed Int64)))
+  , testProperty "fixed32"  (prop_wire (Proxy :: Proxy (Pb.Fixed Word32)))
+  , testProperty "fixed64"  (prop_wire (Proxy :: Proxy (Pb.Fixed Word64)))
+  , testProperty "sfixed32" (prop_wire (Proxy :: Proxy (Pb.Fixed Int32)))
+  , testProperty "sfixed64" (prop_wire (Proxy :: Proxy (Pb.Fixed Int64)))
+  , testProperty "float"    (prop_wire (Proxy :: Proxy Float))
+  , testProperty "double"   (prop_wire (Proxy :: Proxy Double))
+  , testProperty "bool"     (prop_wire (Proxy :: Proxy Bool))
+  ]
+
+packedWireTests =
+  [ testProperty "int32"    (prop_wire (Proxy :: Proxy (PackedList Int32)))
+  , testProperty "int64"    (prop_wire (Proxy :: Proxy (PackedList Int64)))
+  , testProperty "word32"   (prop_wire (Proxy :: Proxy (PackedList Word32)))
+  , testProperty "word64"   (prop_wire (Proxy :: Proxy (PackedList Word64)))
+  , testProperty "sint32"   (prop_wire (Proxy :: Proxy (PackedList (Signed Int32))))
+  , testProperty "sint64"   (prop_wire (Proxy :: Proxy (PackedList (Signed Int64))))
+  ]
+
 requiredSingleValueTests =
-  [ testProperty "int32"    prop_req_int32
-  , testProperty "int64"    prop_req_int64
-  , testProperty "word32"   prop_req_word32
-  , testProperty "word64"   prop_req_word64
-  , testProperty "sint32"   prop_req_sint32
-  , testProperty "sint64"   prop_req_sint64
-  , testProperty "fixed32"  prop_req_fixed32
-  , testProperty "fixed64"  prop_req_fixed64
-  , testProperty "sfixed32" prop_req_sfixed32
-  , testProperty "sfixed64" prop_req_sfixed64
-  , testProperty "float"    prop_req_float
-  , testProperty "double"   prop_req_double
-  , testProperty "bool"     prop_req_bool
+  [ testProperty "int32"    (prop_req (Proxy :: Proxy Int32))
+  , testProperty "int64"    (prop_req (Proxy :: Proxy Int64))
+  , testProperty "word32"   (prop_req (Proxy :: Proxy Word32))
+  , testProperty "word64"   (prop_req (Proxy :: Proxy Word64))
+  , testProperty "sint32"   (prop_req (Proxy :: Proxy (Signed Int32)))
+  , testProperty "sint64"   (prop_req (Proxy :: Proxy (Signed Int64)))
+  , testProperty "fixed32"  (prop_req (Proxy :: Proxy (Pb.Fixed Word32)))
+  , testProperty "fixed64"  (prop_req (Proxy :: Proxy (Pb.Fixed Word64)))
+  , testProperty "sfixed32" (prop_req (Proxy :: Proxy (Pb.Fixed Int32)))
+  , testProperty "sfixed64" (prop_req (Proxy :: Proxy (Pb.Fixed Int64)))
+  , testProperty "float"    (prop_req (Proxy :: Proxy Float))
+  , testProperty "double"   (prop_req (Proxy :: Proxy Double))
+  , testProperty "bool"     (prop_req (Proxy :: Proxy Bool))
   ]
 
 optionalSingleValueTests =
-  [ testProperty "int32"    prop_opt_int32
-  , testProperty "int64"    prop_opt_int64
-  , testProperty "word32"   prop_opt_word32
-  , testProperty "word64"   prop_opt_word64
-  , testProperty "sint32"   prop_opt_sint32
-  , testProperty "sint64"   prop_opt_sint64
-  , testProperty "fixed32"  prop_opt_fixed32
-  , testProperty "fixed64"  prop_opt_fixed64
-  , testProperty "sfixed32" prop_opt_sfixed32
-  , testProperty "sfixed64" prop_opt_sfixed64
-  , testProperty "float"    prop_opt_float
-  , testProperty "double"   prop_opt_double
-  , testProperty "bool"     prop_opt_bool
+  [ testProperty "int32"    (prop_opt (Proxy :: Proxy Int32))
+  , testProperty "int64"    (prop_opt (Proxy :: Proxy Int64))
+  , testProperty "word32"   (prop_opt (Proxy :: Proxy Word32))
+  , testProperty "word64"   (prop_opt (Proxy :: Proxy Word64))
+  , testProperty "sint32"   (prop_opt (Proxy :: Proxy (Signed Int32)))
+  , testProperty "sint64"   (prop_opt (Proxy :: Proxy (Signed Int64)))
+  , testProperty "fixed32"  (prop_opt (Proxy :: Proxy (Pb.Fixed Word32)))
+  , testProperty "fixed64"  (prop_opt (Proxy :: Proxy (Pb.Fixed Word64)))
+  , testProperty "sfixed32" (prop_opt (Proxy :: Proxy (Pb.Fixed Int32)))
+  , testProperty "sfixed64" (prop_opt (Proxy :: Proxy (Pb.Fixed Int64)))
+  , testProperty "float"    (prop_opt (Proxy :: Proxy Float))
+  , testProperty "double"   (prop_opt (Proxy :: Proxy Double))
+  , testProperty "bool"     (prop_opt (Proxy :: Proxy Bool))
   ]
 
 tagsOutOfRangeTests =
   [ testProperty "word32" prop_req_word32_out_of_range
   ]
+
+instance Arbitrary a => Arbitrary (Required n a) where
+  arbitrary = putValue <$> arbitrary
+  -- shrink = fmap shrink
+
+instance Arbitrary a => Arbitrary (Optional n a) where
+  arbitrary = putValue <$> arbitrary
+  -- shrink = fmap shrink
+
+instance Arbitrary a => Arbitrary (Repeated n a) where
+  arbitrary = putValue <$> listOf1 arbitrary
+  -- shrink = fmap shrink
+
+instance Arbitrary a => Arbitrary (Packed n a) where
+  arbitrary = putValue <$> listOf1 arbitrary
+  -- shrink = fmap shrink
+
+instance Arbitrary a => Arbitrary (PackedList a) where
+  arbitrary = PackedList <$> listOf1 arbitrary
+  -- shrink = fmap shrink
+
+instance Arbitrary a => Arbitrary (Signed a) where
+  arbitrary = Signed <$> arbitrary
+
+instance Arbitrary a => Arbitrary (Pb.Fixed a) where
+  arbitrary = Pb.Fixed <$> arbitrary
 
 data RequiredValue n a = RequiredValue (Required n (Last a))
   deriving (Eq, Generic)
@@ -82,6 +141,19 @@ instance (EncodeWire a, Nat n) => Encode (OptionalValue n a)
 instance (DecodeWire a, Nat n) => Decode (OptionalValue n a)
 
 newtype One a = One a deriving (Eq, Generic, Encode, Decode)
+
+prop_wire :: forall a . (Eq a, Arbitrary a, EncodeWire a, DecodeWire a) => Proxy a -> Gen Bool
+prop_wire _ = do
+  tag <- choose (0, 536870912)
+  val <- arbitrary
+  let bs = runPut (encodeWire tag (val :: a))
+      dec = do
+        field <- getField
+        guard $ tag == fieldTag field
+        decodeWire field
+  case runGet dec bs of
+    Right val' -> return $ val == val'
+    Left err   -> fail err
 
 prop_req_roundtrip :: (Eq a, Nat n, Encode (RequiredValue n a), Decode (RequiredValue n a)) => RequiredValue n a -> Gen Bool
 prop_req_roundtrip msg = do
@@ -121,72 +193,10 @@ prop_req_word32_out_of_range = expectFailure $ do
   val <- Last . Just <$> arbitrary
   prop_req_reify_out_of_range (val :: Last Word32) prop_req_roundtrip
 
-prop_req_word32 :: Gen Bool
-prop_req_word32 = do
+prop_req :: forall a . (Arbitrary a, Eq a, EncodeWire a, DecodeWire a) => Proxy a -> Gen Bool
+prop_req _ = do
   val <- Last . Just <$> arbitrary
-  prop_req_reify (val :: Last Word32) prop_req_roundtrip
-
-prop_req_word64 :: Gen Bool
-prop_req_word64 = do
-  val <- Last . Just <$> arbitrary
-  prop_req_reify (val :: Last Word64) prop_req_roundtrip
-
-prop_req_int32 :: Gen Bool
-prop_req_int32 = do
-  val <- Last . Just <$> arbitrary
-  prop_req_reify (val :: Last Int32) prop_req_roundtrip
-
-prop_req_int64 :: Gen Bool
-prop_req_int64 = do
-  val <- Last . Just <$> arbitrary
-  prop_req_reify (val :: Last Int64) prop_req_roundtrip
-
-prop_req_sint32 :: Gen Bool
-prop_req_sint32 = do
-  val <- Last . Just . Signed <$> arbitrary
-  prop_req_reify (val :: Last (Signed Int32)) prop_req_roundtrip
-
-prop_req_sint64 :: Gen Bool
-prop_req_sint64 = do
-  val <- Last . Just . Signed <$> arbitrary
-  prop_req_reify (val :: Last (Signed Int64)) prop_req_roundtrip
-
-prop_req_fixed32 :: Gen Bool
-prop_req_fixed32 = do
-  val <- Last . Just . Pb.Fixed <$> arbitrary
-  prop_req_reify (val :: Last (Pb.Fixed Int32)) prop_req_roundtrip
-
-prop_req_fixed64 :: Gen Bool
-prop_req_fixed64 = do
-  val <- Last . Just . Pb.Fixed <$> arbitrary
-  prop_req_reify (val :: Last (Pb.Fixed Int64)) prop_req_roundtrip
-
-prop_req_sfixed32 :: Gen Bool
-prop_req_sfixed32 = do
-  val <- Last . Just . Pb.Fixed <$> arbitrary
-  prop_req_reify (val :: Last (Pb.Fixed Word32)) prop_req_roundtrip
-
-prop_req_sfixed64 :: Gen Bool
-prop_req_sfixed64 = do
-  val <- Last . Just . Pb.Fixed <$> arbitrary
-  prop_req_reify (val :: Last (Pb.Fixed Word64)) prop_req_roundtrip
-
-prop_req_float :: Gen Bool
-prop_req_float = do
-  val <- Last . Just <$> arbitrary
-  prop_req_reify (val :: Last Float) prop_req_roundtrip
-
-prop_req_double :: Gen Bool
-prop_req_double = do
-  val <- Last . Just <$> arbitrary
-  prop_req_reify (val :: Last Double) prop_req_roundtrip
-
-prop_req_bool :: Gen Bool
-prop_req_bool = do
-  val <- Last . Just <$> arbitrary
-  prop_req_reify (val :: Last Bool) prop_req_roundtrip
-
-
+  prop_req_reify (val :: Last a) prop_req_roundtrip
 
 prop_opt_roundtrip :: (Eq a, Nat n, Encode (OptionalValue n a), Decode (OptionalValue n a)) => OptionalValue n a -> Gen Bool
 prop_opt_roundtrip msg = do
@@ -208,94 +218,7 @@ prop_opt_reify a f = do
   n <- choose (0, 536870911)
   reifyIntegral (n :: Int32) g
 
-prop_opt_word32 :: Gen Property
-prop_opt_word32 = do
-  val <- Last . Just <$> arbitrary
-  full <- prop_opt_reify (val :: Last Word32) prop_opt_roundtrip
-  empty <- prop_opt_reify (Last Nothing :: Last Word32) prop_opt_roundtrip
-  -- return $ full .&&. once empty
-  return $ full .&&. empty
-
-prop_opt_word64 :: Gen Property
-prop_opt_word64 = do
-  val <- Last . Just <$> arbitrary
-  full <- prop_opt_reify (val :: Last Word64) prop_opt_roundtrip
-  empty <- prop_opt_reify (Last Nothing :: Last Word64) prop_opt_roundtrip
-  return $ full .&&. empty
-
-prop_opt_int32 :: Gen Property
-prop_opt_int32 = do
-  val <- Last . Just <$> arbitrary
-  full <- prop_opt_reify (val :: Last Int32) prop_opt_roundtrip
-  empty <- prop_opt_reify (Last Nothing :: Last Int32) prop_opt_roundtrip
-  return $ full .&&. empty
-
-prop_opt_int64 :: Gen Property
-prop_opt_int64 = do
-  val <- Last . Just <$> arbitrary
-  full <- prop_opt_reify (val :: Last Int64) prop_opt_roundtrip
-  empty <- prop_opt_reify (Last Nothing :: Last Int64) prop_opt_roundtrip
-  return $ full .&&. empty
-
-prop_opt_sint32 :: Gen Property
-prop_opt_sint32 = do
-  val <- Last . Just . Signed <$> arbitrary
-  full <- prop_opt_reify (val :: Last (Signed Int32)) prop_opt_roundtrip
-  empty <- prop_opt_reify (Last Nothing :: Last (Signed Int32)) prop_opt_roundtrip
-  return $ full .&&. empty
-
-prop_opt_sint64 :: Gen Property
-prop_opt_sint64 = do
-  val <- Last . Just . Signed <$> arbitrary
-  full <- prop_opt_reify (val :: Last (Signed Int64)) prop_opt_roundtrip
-  empty <- prop_opt_reify (Last Nothing :: Last (Signed Int64)) prop_opt_roundtrip
-  return $ full .&&. empty
-
-prop_opt_fixed32 :: Gen Property
-prop_opt_fixed32 = do
-  val <- Last . Just . Pb.Fixed <$> arbitrary
-  full <- prop_opt_reify (val :: Last (Pb.Fixed Int32)) prop_opt_roundtrip
-  empty <- prop_opt_reify (Last Nothing :: Last (Pb.Fixed Int32)) prop_opt_roundtrip
-  return $ full .&&. empty
-
-prop_opt_fixed64 :: Gen Property
-prop_opt_fixed64 = do
-  val <- Last . Just . Pb.Fixed <$> arbitrary
-  full <- prop_opt_reify (val :: Last (Pb.Fixed Int64)) prop_opt_roundtrip
-  empty <- prop_opt_reify (Last Nothing :: Last (Pb.Fixed Int64)) prop_opt_roundtrip
-  return $ full .&&. empty
-
-prop_opt_sfixed32 :: Gen Property
-prop_opt_sfixed32 = do
-  val <- Last . Just . Pb.Fixed <$> arbitrary
-  full <- prop_opt_reify (val :: Last (Pb.Fixed Word32)) prop_opt_roundtrip
-  empty <- prop_opt_reify (Last Nothing :: Last (Pb.Fixed Word32)) prop_opt_roundtrip
-  return $ full .&&. empty
-
-prop_opt_sfixed64 :: Gen Property
-prop_opt_sfixed64 = do
-  val <- Last . Just . Pb.Fixed <$> arbitrary
-  full <- prop_opt_reify (val :: Last (Pb.Fixed Word64)) prop_opt_roundtrip
-  empty <- prop_opt_reify (Last Nothing :: Last (Pb.Fixed Word64)) prop_opt_roundtrip
-  return $ full .&&. empty
-
-prop_opt_float :: Gen Property
-prop_opt_float = do
-  val <- Last . Just <$> arbitrary
-  full <- prop_opt_reify (val :: Last Float) prop_opt_roundtrip
-  empty <- prop_opt_reify (Last Nothing :: Last Float) prop_opt_roundtrip
-  return $ full .&&. empty
-
-prop_opt_double :: Gen Property
-prop_opt_double = do
-  val <- Last . Just <$> arbitrary
-  full <- prop_opt_reify (val :: Last Double) prop_opt_roundtrip
-  empty <- prop_opt_reify (Last Nothing :: Last Double) prop_opt_roundtrip
-  return $ full .&&. empty
-
-prop_opt_bool :: Gen Property
-prop_opt_bool = do
-  val <- Last . Just <$> arbitrary
-  full <- prop_opt_reify (val :: Last Bool) prop_opt_roundtrip
-  empty <- prop_opt_reify (Last Nothing :: Last Bool) prop_opt_roundtrip
-  return $ full .&&. empty
+prop_opt :: forall a . (Arbitrary a, Eq a, EncodeWire a, DecodeWire a) => Proxy a -> Gen Bool
+prop_opt _ = do
+  val <- Last <$> arbitrary
+  prop_opt_reify (val :: Last a) prop_opt_roundtrip
