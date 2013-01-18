@@ -21,7 +21,6 @@ module Data.ProtocolBuffers.Wire
   ) where
 
 import Control.Applicative
-import Control.DeepSeq (NFData)
 import Control.Monad.Identity
 import Data.Bits
 import Data.ByteString (ByteString)
@@ -34,7 +33,6 @@ import Data.Serialize.IEEE754
 import Data.Serialize.Put
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
-import Data.Traversable
 import Data.Word
 import Data.Binary.IEEE754 (wordToDouble, wordToFloat)
 
