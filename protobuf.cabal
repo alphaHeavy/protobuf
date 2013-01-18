@@ -58,11 +58,14 @@ test-suite protobuf-test
     Main.hs
   build-depends:
     base                       >= 3      && < 5,
-    protobuf,
+    ghc-prim,
     bytestring,
     cereal,
-    ghc-prim,
+    mtl,
+    protobuf,
+    tagged,
     type-level,
+    unordered-containers,
     test-framework             >= 0.4,
     test-framework-hunit       >= 0.2.6,
     test-framework-quickcheck2 >= 0.2.10,

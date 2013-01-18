@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveTraversable #-}
@@ -33,6 +34,7 @@ import Data.Foldable as Fold
 import Data.Monoid
 import Data.Tagged
 import Data.Traversable
+import Data.Typeable
 
 -- | Optional fields. Values that are not found will return 'Nothing'.
 type Optional (n :: *) a = Tagged n (Optionally a)
@@ -61,7 +63,7 @@ class GetValue a where
   putValue :: GetValueType a -> a
 
 newtype Optionally a = Optionally {runOptionally :: a}
-  deriving (Bounded, Eq, Enum, Foldable, Functor, Monoid, Ord, NFData, Show, Traversable)
+  deriving (Bounded, Eq, Enum, Foldable, Functor, Monoid, Ord, NFData, Show, Traversable, Typeable)
 
 -- | A 'Maybe' lens on an 'Optional' field.
 instance GetValue (Optional n a) where
@@ -91,7 +93,7 @@ instance GetValue (Required n a) where
 -- A newtype wrapper used to distinguish 'Prelude.Enum's from other field types.
 -- 'Enumeration' fields use 'Prelude.fromEnum' and 'Prelude.toEnum' when encoding and decoding messages.
 newtype Enumeration a = Enumeration a
-  deriving (Bounded, Eq, Enum, Foldable, Functor, Ord, NFData, Traversable)
+  deriving (Bounded, Eq, Enum, Foldable, Functor, Ord, NFData, Traversable, Typeable)
 
 instance Show a => Show (Enumeration (Identity a)) where
   show (Enumeration (Identity a)) = "Enumeration " ++ show a
@@ -150,14 +152,14 @@ instance Enum a => GetEnum (Repeated n (Enumeration [a])) where
 -- |
 -- A list that is stored in a packed format.
 newtype PackedList a = PackedList {unPackedList :: [a]}
-  deriving (Eq, Foldable, Functor, Monoid, NFData, Ord, Show, Traversable)
+  deriving (Eq, Foldable, Functor, Monoid, NFData, Ord, Show, Traversable, Typeable)
 
 -- |
 -- Signed integers are stored in a zz-encoded form.
 newtype Signed a = Signed a
-  deriving (Bits, Bounded, Enum, Eq, Floating, Foldable, Fractional, Functor, Integral, Monoid, NFData, Num, Ord, Real, RealFloat, RealFrac, Show, Traversable)
+  deriving (Bits, Bounded, Enum, Eq, Floating, Foldable, Fractional, Functor, Integral, Monoid, NFData, Num, Ord, Real, RealFloat, RealFrac, Show, Traversable, Typeable)
 
 -- |
 -- Fixed integers are stored in little-endian form without additional encoding.
 newtype Fixed a = Fixed a
-  deriving (Bits, Bounded, Enum, Eq, Floating, Foldable, Fractional, Functor, Integral, Monoid, NFData, Num, Ord, Real, RealFloat, RealFrac, Show, Traversable)
+  deriving (Bits, Bounded, Enum, Eq, Floating, Foldable, Fractional, Functor, Integral, Monoid, NFData, Num, Ord, Real, RealFloat, RealFrac, Show, Traversable, Typeable)

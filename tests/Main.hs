@@ -21,12 +21,15 @@ import Control.Monad.Identity
 import qualified Data.ByteString as B
 import Data.ProtocolBuffers as Pb
 import Data.ProtocolBuffers.Internal as Pb
+import Data.HashMap.Strict (HashMap)
+import qualified Data.HashMap.Strict as HashMap
 import Data.Int
 import Data.List
 import Data.Monoid
-import Data.Serialize
+import Data.Serialize (runGet, runPut)
 import Data.Proxy
 import Data.Tagged
+import Data.Typeable
 import Data.Word
 import Data.TypeLevel.Num (Nat, reifyIntegral)
 
@@ -128,6 +131,16 @@ instance Arbitrary a => Arbitrary (Signed a) where
 instance Arbitrary a => Arbitrary (Pb.Fixed a) where
   arbitrary = Pb.Fixed <$> arbitrary
 
+instance Arbitrary Field where
+  arbitrary = do
+    tag <- choose (0, 536870912)
+    oneof
+      [ VarintField tag             <$> arbitrary
+      , Fixed64Field tag            <$> arbitrary
+      , DelimitedField tag . B.pack <$> arbitrary
+      , Fixed32Field tag            <$> arbitrary
+      ]
+
 data RequiredValue n a = RequiredValue (Required n (Last a))
   deriving (Eq, Generic)
 
@@ -142,8 +155,8 @@ instance (DecodeWire a, Nat n) => Decode (OptionalValue n a)
 
 newtype One a = One a deriving (Eq, Generic, Encode, Decode)
 
-prop_wire :: forall a . (Eq a, Arbitrary a, EncodeWire a, DecodeWire a) => Proxy a -> Gen Bool
-prop_wire _ = do
+prop_wire :: forall a . (Eq a, Arbitrary a, EncodeWire a, DecodeWire a, Typeable a) => Proxy a -> Property
+prop_wire _ = label ("prop_wire :: " ++ show (typeOf (undefined :: a))) $ do
   tag <- choose (0, 536870912)
   val <- arbitrary
   let bs = runPut (encodeWire tag (val :: a))
@@ -193,8 +206,8 @@ prop_req_word32_out_of_range = expectFailure $ do
   val <- Last . Just <$> arbitrary
   prop_req_reify_out_of_range (val :: Last Word32) prop_req_roundtrip
 
-prop_req :: forall a . (Arbitrary a, Eq a, EncodeWire a, DecodeWire a) => Proxy a -> Gen Bool
-prop_req _ = do
+prop_req :: forall a . (Arbitrary a, Eq a, EncodeWire a, DecodeWire a, Typeable a) => Proxy a -> Property
+prop_req _ = label ("prop_req :: " ++ show (typeOf (undefined :: a))) $ do
   val <- Last . Just <$> arbitrary
   prop_req_reify (val :: Last a) prop_req_roundtrip
 
@@ -218,7 +231,7 @@ prop_opt_reify a f = do
   n <- choose (0, 536870911)
   reifyIntegral (n :: Int32) g
 
-prop_opt :: forall a . (Arbitrary a, Eq a, EncodeWire a, DecodeWire a) => Proxy a -> Gen Bool
-prop_opt _ = do
+prop_opt :: forall a . (Arbitrary a, Eq a, EncodeWire a, DecodeWire a, Typeable a) => Proxy a -> Property
+prop_opt _ = label ("prop_opt :: " ++ show (typeOf (undefined :: a))) $ do
   val <- Last <$> arbitrary
   prop_opt_reify (val :: Last a) prop_opt_roundtrip

@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -33,6 +34,7 @@ import Data.Serialize.IEEE754
 import Data.Serialize.Put
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
+import Data.Typeable
 import Data.Word
 import Data.Binary.IEEE754 (wordToDouble, wordToFloat)
 
@@ -52,7 +54,7 @@ data Field
   | StartField     {-# UNPACK #-} !Tag -- ^ For: groups (deprecated)
   | EndField       {-# UNPACK #-} !Tag -- ^ For: groups (deprecated)
   | Fixed32Field   {-# UNPACK #-} !Tag {-# UNPACK #-} !Word32 -- ^ For: fixed32, sfixed32, float
-    deriving (Eq, Ord, Show)
+    deriving (Eq, Ord, Show, Typeable)
 
 getVarintPrefixedBS :: Get ByteString
 getVarintPrefixedBS = getBytes =<< getVarInt
