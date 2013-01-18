@@ -31,6 +31,7 @@ import Data.Bits
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import Data.Foldable
+import Data.Functor.Identity
 import Data.Int
 import Data.Monoid
 import Data.Serialize.Get
@@ -155,6 +156,12 @@ instance EncodeWire Field where
 instance DecodeWire Field where
   decodeWire = pure
 
+instance EncodeWire a => EncodeWire (Identity a) where
+  encodeWire t = traverse_ (encodeWire t)
+
+instance DecodeWire a => DecodeWire (Identity a) where
+  decodeWire = fmap Identity . decodeWire
+
 instance EncodeWire a => EncodeWire (Maybe a) where
   encodeWire t = traverse_ (encodeWire t)
 
@@ -269,15 +276,20 @@ instance DecodeWire T.Text where
       Left err  -> fail $ "Decoding failed: " ++ show err
   decodeWire _ = empty
 
-instance Enum a => EncodeWire (Enumeration a) where
-  encodeWire t (Enumeration a) = encodeWire t $ c a where
+instance (Foldable f, Enum a) => EncodeWire (Enumeration (f a)) where
+  encodeWire t = traverse_ (encodeWire t . c) . getEnum where
     c :: a -> Int32
     c = fromIntegral . fromEnum
 
-instance Enum a => DecodeWire (Enumeration a) where
-  decodeWire f = Enumeration . c <$> decodeWire f where
-    c :: Int32 -> a
-    c = toEnum . fromIntegral
+instance Enum a => DecodeWire (Enumeration (Identity a)) where
+  decodeWire f = c <$> decodeWire f where
+    c :: Int32 -> Enumeration (Identity a)
+    c = putEnum . Identity . toEnum . fromIntegral
+
+instance Enum a => DecodeWire (Enumeration (Maybe a)) where
+  decodeWire f = c <$> decodeWire f where
+    c :: Int32 -> Enumeration (Maybe a)
+    c = putEnum . Just . toEnum . fromIntegral
 
 -- |
 -- Signed integers are stored in a zz-encoded form.

@@ -24,7 +24,7 @@ module Data.ProtocolBuffers.Types
 
 import Control.DeepSeq (NFData)
 import Control.Monad.Identity
-import Data.Foldable
+import Data.Foldable as Fold
 import Data.Monoid
 import Data.Tagged
 import Data.Traversable
@@ -77,13 +77,30 @@ instance GetValue (Required n a) where
 -- A newtype wrapper used to distinguish 'Prelude.Enum's from other field types.
 -- 'Enumeration' fields use 'Prelude.fromEnum' and 'Prelude.toEnum' when encoding and decoding messages.
 newtype Enumeration a = Enumeration a
-  deriving (Bounded, Eq, Enum, Foldable, Functor, Ord, NFData, Show, Traversable)
+  deriving (Bounded, Eq, Enum, Foldable, Functor, Ord, NFData, Traversable)
 
-instance Enum a => Monoid (Enumeration a) where
+instance Show a => Show (Enumeration (Identity a)) where
+  show (Enumeration (Identity a)) = "Enumeration " ++ show a
+
+instance Show a => Show (Enumeration (Maybe a)) where
+  show (Enumeration a) = "Enumeration " ++ show a
+
+instance Show a => Show (Enumeration [a]) where
+  show (Enumeration a) = "Enumeration " ++ show a
+
+instance Monoid (Enumeration (Identity a)) where
   -- error case is handled by getEnum but we're exposing the instance :-(
   -- really should be a Semigroup instance... if we want a semigroup dependency
-  mempty = Enumeration (toEnum 0)
+  mempty = error "Empty Enumeration"
   _ `mappend` x = x
+
+instance Monoid (Enumeration (Maybe a)) where
+  mempty = Enumeration Nothing
+  _ `mappend` x = x
+
+instance Monoid (Enumeration [a]) where
+  mempty = Enumeration []
+  Enumeration x `mappend` Enumeration y = Enumeration (x <> y)
 
 -- | Similar to 'GetValue' but specialized for 'Enumeration' to avoid overlap.
 class GetEnum a where
@@ -96,17 +113,22 @@ instance GetEnum (Enumeration a) where
   getEnum (Enumeration x) = x
   putEnum = Enumeration
 
-instance Enum a => GetEnum (Optional n (Enumeration a)) where
-  type GetEnumResult (Tagged n (Optionally (Enumeration a))) = a
+instance Enum a => GetEnum (Identity a) where
+  type GetEnumResult (Identity a) = a
+  getEnum = runIdentity
+  putEnum = Identity
+
+instance Enum a => GetEnum (Optional n (Enumeration (Maybe a))) where
+  type GetEnumResult (Tagged n (Optionally (Enumeration (Maybe a)))) = Maybe a
   getEnum = getEnum . runOptionally . unTagged
   putEnum = Tagged . Optionally . putEnum
 
-instance Enum a => GetEnum (Required n (Enumeration a)) where
-  type GetEnumResult (Tagged n (Identity (Enumeration a))) = a
-  getEnum = getEnum . runIdentity . unTagged
-  putEnum = Tagged . Identity . putEnum
+instance Enum a => GetEnum (Required n (Enumeration (Identity a))) where
+  type GetEnumResult (Tagged n (Identity (Enumeration (Identity a)))) = a
+  getEnum = runIdentity . getEnum . runIdentity . unTagged
+  putEnum = Tagged . Identity . Enumeration . Identity
 
-instance Enum a => GetEnum (Repeated n (Enumeration a)) where
-  type GetEnumResult (Tagged n [Enumeration a]) = [a]
-  getEnum = fmap getEnum . unTagged
-  putEnum = Tagged . fmap putEnum
+instance Enum a => GetEnum (Repeated n (Enumeration [a])) where
+  type GetEnumResult (Tagged n [Enumeration [a]]) = [a]
+  getEnum = Fold.concatMap getEnum . unTagged
+  putEnum = Tagged . (:[]) . Enumeration
