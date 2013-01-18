@@ -27,11 +27,11 @@ module Data.ProtocolBuffers.Wire
 
 import Control.Applicative
 import Control.DeepSeq (NFData)
+import Control.Monad.Identity
 import Data.Bits
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import Data.Foldable
-import Data.Functor.Identity
 import Data.Int
 import Data.Monoid
 import Data.Serialize.Get
