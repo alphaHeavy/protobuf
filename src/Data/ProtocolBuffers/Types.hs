@@ -16,10 +16,12 @@ module Data.ProtocolBuffers.Types
   , Required
   , Optional
   , Repeated
+  , Packed
   , Enumeration(..)
   , Optionally(..)
   , Fixed(..)
   , Signed(..)
+  , PackedList(..)
   , GetValue(..)
   , GetEnum(..)
   ) where
@@ -40,6 +42,9 @@ type Required (n :: *) a = Tagged n (Identity a)
 
 -- | Lists of values.
 type Repeated (n :: *) a = Tagged n [a]
+
+-- | Lists of values.
+type Packed (n :: *) a = Tagged n (PackedList a)
 
 instance Show a => Show (Required n a) where
   show (Tagged (Identity x)) = show (Tagged x :: Tagged n a)
@@ -144,4 +149,9 @@ newtype PackedList a = PackedList [a]
 -- |
 -- Signed integers are stored in a zz-encoded form.
 newtype Signed a = Signed a
+  deriving (Bits, Bounded, Enum, Eq, Floating, Foldable, Fractional, Functor, Integral, Monoid, NFData, Num, Ord, Real, RealFloat, RealFrac, Show, Traversable)
+
+-- |
+-- Fixed integers are stored in little-endian form without additional encoding.
+newtype Fixed a = Fixed a
   deriving (Bits, Bounded, Enum, Eq, Floating, Foldable, Fractional, Functor, Integral, Monoid, NFData, Num, Ord, Real, RealFloat, RealFrac, Show, Traversable)

@@ -271,6 +271,74 @@ instance DecodeWire T.Text where
       Left err  -> fail $ "Decoding failed: " ++ show err
   decodeWire _ = empty
 
+instance EncodeWire (PackedList Int32) where
+  encodeWire t (PackedList xs) = do
+    encodeWire t . runPut $ traverse_ putVarSInt xs
+
+instance DecodeWire (PackedList Int32) where
+  decodeWire (DelimitedField _ bs) =
+    case runGet (some getVarInt) bs of
+      Right val -> return $ PackedList val
+      Left err  -> fail err
+  decodeWire _ = empty
+
+instance EncodeWire (PackedList Int64) where
+  encodeWire t (PackedList xs) = do
+    encodeWire t . runPut $ traverse_ putVarSInt xs
+
+instance DecodeWire (PackedList Int64) where
+  decodeWire (DelimitedField _ bs) =
+    case runGet (some getVarInt) bs of
+      Right val -> return $ PackedList val
+      Left err  -> fail err
+  decodeWire _ = empty
+
+instance EncodeWire (PackedList Word32) where
+  encodeWire t (PackedList xs) = do
+    encodeWire t . runPut $ traverse_ putVarUInt xs
+
+instance DecodeWire (PackedList Word32) where
+  decodeWire (DelimitedField _ bs) =
+    case runGet (some getVarInt) bs of
+      Right val -> return $ PackedList val
+      Left err  -> fail err
+  decodeWire _ = empty
+
+instance EncodeWire (PackedList Word64) where
+  encodeWire t (PackedList xs) = do
+    encodeWire t . runPut $ traverse_ putVarUInt xs
+
+instance DecodeWire (PackedList Word64) where
+  decodeWire (DelimitedField _ bs) =
+    case runGet (some getVarInt) bs of
+      Right val -> return $ PackedList val
+      Left err  -> fail err
+  decodeWire _ = empty
+
+instance EncodeWire (PackedList (Signed Int32)) where
+  encodeWire t (PackedList xs) = do
+    let c (Signed x) = putVarSInt $ zzEncode32 x
+    encodeWire t . runPut $ traverse_ c xs
+
+instance DecodeWire (PackedList (Signed Int32)) where
+  decodeWire (DelimitedField _ bs) =
+    case runGet (some getVarInt) bs of
+      Right val -> return . PackedList $ fmap (Signed . zzDecode32) val
+      Left err  -> fail err
+  decodeWire _ = empty
+
+instance EncodeWire (PackedList (Signed Int64)) where
+  encodeWire t (PackedList xs) = do
+    let c (Signed x) = putVarSInt $ zzEncode64 x
+    encodeWire t . runPut $ traverse_ c xs
+
+instance DecodeWire (PackedList (Signed Int64)) where
+  decodeWire (DelimitedField _ bs) =
+    case runGet (some getVarInt) bs of
+      Right val -> return . PackedList $ fmap (Signed . zzDecode64) val
+      Left err  -> fail err
+  decodeWire _ = empty
+
 instance (Foldable f, Enum a) => EncodeWire (Enumeration (f a)) where
   encodeWire t = traverse_ (encodeWire t . c) . getEnum where
     c :: a -> Int32
