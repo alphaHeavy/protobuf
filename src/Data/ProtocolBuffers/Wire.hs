@@ -11,9 +11,7 @@
 module Data.ProtocolBuffers.Wire
   ( Enumeration(..)
   , Field(..)
-  , Fixed(..)
   , GetEnum(..)
-  , Signed(..)
   , Tag
   , EncodeWire(..)
   , DecodeWire(..)
@@ -290,16 +288,6 @@ instance Enum a => DecodeWire (Enumeration (Maybe a)) where
   decodeWire f = c <$> decodeWire f where
     c :: Int32 -> Enumeration (Maybe a)
     c = putEnum . Just . toEnum . fromIntegral
-
--- |
--- Signed integers are stored in a zz-encoded form.
-newtype Signed a = Signed a
-  deriving (Bits, Bounded, Enum, Eq, Floating, Foldable, Fractional, Functor, Integral, Monoid, NFData, Num, Ord, Real, RealFloat, RealFrac, Show, Traversable)
-
--- |
--- Fixed integers are stored in little-endian form without additional encoding.
-newtype Fixed a = Fixed a
-  deriving (Bits, Bounded, Enum, Eq, Floating, Foldable, Fractional, Functor, Integral, Monoid, NFData, Num, Ord, Real, RealFloat, RealFrac, Show, Traversable)
 
 -- Taken from google's code, but I had to explcitly add fromIntegral in the right places:
 zzEncode32 :: Int32 -> Word32

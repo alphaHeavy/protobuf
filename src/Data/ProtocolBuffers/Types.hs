@@ -18,12 +18,15 @@ module Data.ProtocolBuffers.Types
   , Repeated
   , Enumeration(..)
   , Optionally(..)
+  , Fixed(..)
+  , Signed(..)
   , GetValue(..)
   , GetEnum(..)
   ) where
 
 import Control.DeepSeq (NFData)
 import Control.Monad.Identity
+import Data.Bits
 import Data.Foldable as Fold
 import Data.Monoid
 import Data.Tagged
@@ -132,3 +135,13 @@ instance Enum a => GetEnum (Repeated n (Enumeration [a])) where
   type GetEnumResult (Tagged n [Enumeration [a]]) = [a]
   getEnum = Fold.concatMap getEnum . unTagged
   putEnum = Tagged . (:[]) . Enumeration
+
+-- |
+-- A list that is stored in a packed format.
+newtype PackedList a = PackedList [a]
+  deriving (Eq, Foldable, Functor, Monoid, NFData, Ord, Show, Traversable)
+
+-- |
+-- Signed integers are stored in a zz-encoded form.
+newtype Signed a = Signed a
+  deriving (Bits, Bounded, Enum, Eq, Floating, Foldable, Fractional, Functor, Integral, Monoid, NFData, Num, Ord, Real, RealFloat, RealFrac, Show, Traversable)
