@@ -43,6 +43,7 @@ tests =
   , testGroup "Optional Single Values" optionalSingleValueTests
   , testGroup "Tags Out of Range" tagsOutOfRangeTests
   , testProperty "Generic message coding" prop_generic
+  , testProperty "Generic length prefixed message coding" prop_generic_length_prefixed
   ]
 
 primitiveWireTests =
@@ -171,6 +172,14 @@ prop_wire _ = label ("prop_wire :: " ++ show (typeOf (undefined :: a))) $ do
 
 prop_generic :: Property
 prop_generic = do
+  msg <- HashMap.fromListWith (++) . fmap (\ c -> (fieldTag c, [c])) <$> listOf1 arbitrary
+  let bs = runPut $ encodeMessage (msg :: HashMap Tag [Field])
+  case runGet decodeMessage bs of
+    Right msg' -> printTestCase "foo" $ msg == msg'
+    Left err   -> fail err
+
+prop_generic_length_prefixed :: Property
+prop_generic_length_prefixed = do
   msg <- HashMap.fromListWith (++) . fmap (\ c -> (fieldTag c, [c])) <$> listOf1 arbitrary
   let bs = runPut $ encodeLengthPrefixedMessage (msg :: HashMap Tag [Field])
   case runGet decodeLengthPrefixedMessage bs of
