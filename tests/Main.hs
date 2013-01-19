@@ -42,6 +42,7 @@ tests =
   , testGroup "Required Single Values" requiredSingleValueTests
   , testGroup "Optional Single Values" optionalSingleValueTests
   , testGroup "Tags Out of Range" tagsOutOfRangeTests
+  , testProperty "Generic message coding" prop_generic
   ]
 
 primitiveWireTests =
@@ -166,6 +167,14 @@ prop_wire _ = label ("prop_wire :: " ++ show (typeOf (undefined :: a))) $ do
         decodeWire field
   case runGet dec bs of
     Right val' -> return $ val == val'
+    Left err   -> fail err
+
+prop_generic :: Property
+prop_generic = do
+  msg <- HashMap.fromListWith (++) . fmap (\ c -> (fieldTag c, [c])) <$> listOf1 arbitrary
+  let bs = runPut $ encodeLengthPrefixedMessage (msg :: HashMap Tag [Field])
+  case runGet decodeLengthPrefixedMessage bs of
+    Right msg' -> printTestCase "foo" $ msg == msg'
     Left err   -> fail err
 
 prop_req_roundtrip :: (Eq a, Nat n, Encode (RequiredValue n a), Decode (RequiredValue n a)) => RequiredValue n a -> Gen Bool

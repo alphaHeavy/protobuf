@@ -61,8 +61,8 @@ getVarintPrefixedBS = getBytes =<< getVarInt
 
 getField :: Get Field
 getField = do
-  wireTag :: Word64 <- getVarInt
-  let tag = fromIntegral $ wireTag `shiftR` 3
+  wireTag <- getVarInt
+  let tag = wireTag `shiftR` 3
   case wireTag .&. 7 of
     0 -> VarintField    tag <$> getVarInt
     1 -> Fixed64Field   tag <$> getWord64le
@@ -70,15 +70,15 @@ getField = do
     3 -> return $! StartField tag
     4 -> return $! EndField   tag
     5 -> Fixed32Field   tag <$> getWord32le
-    _ -> empty
+    x -> fail $ "Wire type out of range: " ++ show x
 
 putField :: Field -> Put
 putField (VarintField    t val) = putWireTag t 0 >> putVarUInt val
-putField (Fixed64Field   t val) = putWireTag t 1 >> putVarUInt val
+putField (Fixed64Field   t val) = putWireTag t 1 >> putWord64le val
 putField (DelimitedField t val) = putWireTag t 2 >> putVarUInt (B.length val) >> putByteString val
 putField (StartField     t    ) = putWireTag t 3
 putField (EndField       t    ) = putWireTag t 4
-putField (Fixed32Field   t val) = putWireTag t 5 >> putVarUInt val
+putField (Fixed32Field   t val) = putWireTag t 5 >> putWord32le val
 
 putWireTag :: Tag -> Word32 -> Put
 putWireTag tag typ
