@@ -146,7 +146,9 @@ deriving instance DecodeWire a => DecodeWire (Sum a)
 deriving instance DecodeWire a => DecodeWire (Optionally a)
 
 instance EncodeWire Field where
-  encodeWire _ = putField
+  encodeWire t f
+    | t == fieldTag f = putField f
+    | otherwise       = fail $ "Specified tag and field tag do not match"
 
 instance DecodeWire Field where
   decodeWire = pure
