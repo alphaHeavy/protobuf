@@ -173,10 +173,7 @@ prop_wire _ = label ("prop_wire :: " ++ show (typeOf (undefined :: a))) $ do
 prop_generic :: Property
 prop_generic = do
   msg <- HashMap.fromListWith (++) . fmap (\ c -> (fieldTag c, [c])) <$> listOf1 arbitrary
-  let bs = runPut $ encodeMessage (msg :: HashMap Tag [Field])
-  case runGet decodeMessage bs of
-    Right msg' -> printTestCase "foo" $ msg == msg'
-    Left err   -> fail err
+  prop_roundtrip msg
 
 prop_generic_length_prefixed :: Property
 prop_generic_length_prefixed = do
@@ -186,11 +183,11 @@ prop_generic_length_prefixed = do
     Right msg' -> printTestCase "foo" $ msg == msg'
     Left err   -> fail err
 
-prop_req_roundtrip :: (Eq a, Nat n, Encode (RequiredValue n a), Decode (RequiredValue n a)) => RequiredValue n a -> Gen Bool
-prop_req_roundtrip msg = do
+prop_roundtrip :: (Eq a, Encode a, Decode a) => a -> Property
+prop_roundtrip msg = do
   let bs = runPut $ encodeMessage msg
   case runGet decodeMessage bs of
-    Right msg' -> return $ msg == msg'
+    Right msg' -> property $ msg == msg'
     Left err   -> fail err
 
 prop_req_reify_out_of_range :: forall a r . Last a -> (forall n . Nat n => RequiredValue n a -> Gen r) -> Gen r
@@ -222,19 +219,12 @@ prop_req_reify a f = do
 prop_req_word32_out_of_range :: Property
 prop_req_word32_out_of_range = expectFailure $ do
   val <- Last . Just <$> arbitrary
-  prop_req_reify_out_of_range (val :: Last Word32) prop_req_roundtrip
+  prop_req_reify_out_of_range (val :: Last Word32) prop_roundtrip
 
 prop_req :: forall a . (Arbitrary a, Eq a, EncodeWire a, DecodeWire a, Typeable a) => Proxy a -> Property
 prop_req _ = label ("prop_req :: " ++ show (typeOf (undefined :: a))) $ do
   val <- Last . Just <$> arbitrary
-  prop_req_reify (val :: Last a) prop_req_roundtrip
-
-prop_opt_roundtrip :: (Eq a, Nat n, Encode (OptionalValue n a), Decode (OptionalValue n a)) => OptionalValue n a -> Gen Bool
-prop_opt_roundtrip msg = do
-  let bs = runPut $ encodeMessage msg
-  case runGet decodeMessage bs of
-    Right msg' -> return $ msg == msg'
-    Left err   -> fail err
+  prop_req_reify (val :: Last a) prop_roundtrip
 
 prop_opt_reify :: forall a r . Last a -> (forall n . Nat n => OptionalValue n a -> Gen r) -> Gen r
 prop_opt_reify a f = do
@@ -252,4 +242,4 @@ prop_opt_reify a f = do
 prop_opt :: forall a . (Arbitrary a, Eq a, EncodeWire a, DecodeWire a, Typeable a) => Proxy a -> Property
 prop_opt _ = label ("prop_opt :: " ++ show (typeOf (undefined :: a))) $ do
   val <- Last <$> arbitrary
-  prop_opt_reify (val :: Last a) prop_opt_roundtrip
+  prop_opt_reify (val :: Last a) prop_roundtrip
