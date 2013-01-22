@@ -88,29 +88,27 @@ tagsOutOfRangeTests = primitiveTests prop_req_out_of_range
 
 instance Arbitrary a => Arbitrary (Required n a) where
   arbitrary = putValue <$> arbitrary
-  -- shrink = fmap shrink
+  shrink = fmap putValue . shrink . getValue
 
 instance Arbitrary a => Arbitrary (Optional n a) where
   arbitrary = putValue <$> arbitrary
-  -- shrink = fmap shrink
+  shrink = fmap putValue . shrink . getValue
 
 instance Arbitrary a => Arbitrary (Repeated n a) where
   arbitrary = putValue <$> listOf1 arbitrary
-  -- shrink = fmap shrink
-
-instance Arbitrary a => Arbitrary (Packed n a) where
-  arbitrary = putValue <$> listOf1 arbitrary
-  -- shrink = fmap shrink
+  shrink = fmap putValue . shrink . getValue
 
 instance Arbitrary a => Arbitrary (PackedList a) where
   arbitrary = PackedList <$> listOf1 arbitrary
-  -- shrink = fmap shrink
+  shrink = fmap PackedList . shrink . unPackedList
 
 instance Arbitrary a => Arbitrary (Signed a) where
   arbitrary = Signed <$> arbitrary
+  shrink (Signed x) = fmap Signed $ shrink x
 
 instance Arbitrary a => Arbitrary (Pb.Fixed a) where
   arbitrary = Pb.Fixed <$> arbitrary
+  shrink (Pb.Fixed x) = fmap Pb.Fixed $ shrink x
 
 instance Arbitrary Field where
   arbitrary = do
@@ -121,6 +119,11 @@ instance Arbitrary Field where
       , DelimitedField tag . B.pack <$> arbitrary
       , Fixed32Field tag            <$> arbitrary
       ]
+
+  shrink (VarintField t v)    = VarintField    <$> shrink t <*> shrink v
+  shrink (Fixed64Field t v)   = Fixed64Field   <$> shrink t <*> shrink v
+  shrink (DelimitedField t v) = DelimitedField <$> shrink t <*> fmap B.pack (shrink (B.unpack v))
+  shrink (Fixed32Field t v)   = Fixed32Field   <$> shrink t <*> shrink v
 
 data RequiredValue n a = RequiredValue (Required n (Last a))
   deriving (Eq, Generic)
@@ -133,8 +136,6 @@ data OptionalValue n a = OptionalValue (Optional n (Last a))
 
 instance (EncodeWire a, Nat n) => Encode (OptionalValue n a)
 instance (DecodeWire a, Nat n) => Decode (OptionalValue n a)
-
-newtype One a = One a deriving (Eq, Generic, Encode, Decode)
 
 prop_wire :: forall a . (Eq a, Arbitrary a, EncodeWire a, DecodeWire a, Typeable a) => Proxy a -> Property
 prop_wire _ = label ("prop_wire :: " ++ show (typeOf (undefined :: a))) $ do
