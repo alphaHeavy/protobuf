@@ -341,6 +341,87 @@ instance DecodeWire (PackedList (Signed Int64)) where
       Left err  -> fail err
   decodeWire _ = empty
 
+instance EncodeWire (PackedList (Fixed Word32)) where
+  encodeWire t (PackedList xs) = do
+    let c (Fixed x) = putWord32le x
+    encodeWire t . runPut $ traverse_ c xs
+
+instance DecodeWire (PackedList (Fixed Word32)) where
+  decodeWire (DelimitedField _ bs) =
+    case runGet (some getWord32le) bs of
+      Right val -> return . PackedList $ fmap Fixed val
+      Left err  -> fail err
+  decodeWire _ = empty
+
+instance EncodeWire (PackedList (Fixed Word64)) where
+  encodeWire t (PackedList xs) = do
+    let c (Fixed x) = putWord64le x
+    encodeWire t . runPut $ traverse_ c xs
+
+instance DecodeWire (PackedList (Fixed Word64)) where
+  decodeWire (DelimitedField _ bs) =
+    case runGet (some getWord64le) bs of
+      Right val -> return . PackedList $ fmap Fixed val
+      Left err  -> fail err
+  decodeWire _ = empty
+
+instance EncodeWire (PackedList (Fixed Int32)) where
+  encodeWire t (PackedList xs) = do
+    let c (Fixed x) = putWord32le $ fromIntegral x
+    encodeWire t . runPut $ traverse_ c xs
+
+instance DecodeWire (PackedList (Fixed Int32)) where
+  decodeWire (DelimitedField _ bs) =
+    case runGet (some getWord32le) bs of
+      Right val -> return . PackedList $ fmap (Fixed . fromIntegral) val
+      Left err  -> fail err
+  decodeWire _ = empty
+
+instance EncodeWire (PackedList (Fixed Int64)) where
+  encodeWire t (PackedList xs) = do
+    let c (Fixed x) = putWord64le $ fromIntegral x
+    encodeWire t . runPut $ traverse_ c xs
+
+instance DecodeWire (PackedList (Fixed Int64)) where
+  decodeWire (DelimitedField _ bs) =
+    case runGet (some getWord64le) bs of
+      Right val -> return . PackedList $ fmap (Fixed . fromIntegral) val
+      Left err  -> fail err
+  decodeWire _ = empty
+
+instance EncodeWire (PackedList Float) where
+  encodeWire t (PackedList xs) = do
+    encodeWire t . runPut $ traverse_ putFloat32le xs
+
+instance DecodeWire (PackedList Float) where
+  decodeWire (DelimitedField _ bs) =
+    case runGet (some getFloat32le) bs of
+      Right val -> return $ PackedList val
+      Left err  -> fail err
+  decodeWire _ = empty
+
+instance EncodeWire (PackedList Double) where
+  encodeWire t (PackedList xs) = do
+    encodeWire t . runPut $ traverse_ putFloat64le xs
+
+instance DecodeWire (PackedList Double) where
+  decodeWire (DelimitedField _ bs) =
+    case runGet (some getFloat64le) bs of
+      Right val -> return $ PackedList val
+      Left err  -> fail err
+  decodeWire _ = empty
+
+instance EncodeWire (PackedList Bool) where
+  encodeWire t (PackedList xs) = do
+    encodeWire t . runPut $ traverse_ (putVarUInt . fromEnum) xs
+
+instance DecodeWire (PackedList Bool) where
+  decodeWire (DelimitedField _ bs) =
+    case runGet (some getVarInt) bs of
+      Right val -> return . PackedList $ fmap toEnum val
+      Left err  -> fail err
+  decodeWire _ = empty
+
 instance (Foldable f, Enum a) => EncodeWire (Enumeration (f a)) where
   encodeWire t = traverse_ (encodeWire t . c) . getEnum where
     c :: a -> Int32

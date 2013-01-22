@@ -75,6 +75,13 @@ packedWireTests =
   , testProperty "word64"   (prop_wire (Proxy :: Proxy (PackedList Word64)))
   , testProperty "sint32"   (prop_wire (Proxy :: Proxy (PackedList (Signed Int32))))
   , testProperty "sint64"   (prop_wire (Proxy :: Proxy (PackedList (Signed Int64))))
+  , testProperty "fixed32"  (prop_wire (Proxy :: Proxy (PackedList (Pb.Fixed Word32))))
+  , testProperty "fixed64"  (prop_wire (Proxy :: Proxy (PackedList (Pb.Fixed Word64))))
+  , testProperty "sfixed32" (prop_wire (Proxy :: Proxy (PackedList (Pb.Fixed Int32))))
+  , testProperty "sfixed64" (prop_wire (Proxy :: Proxy (PackedList (Pb.Fixed Int64))))
+  , testProperty "float"    (prop_wire (Proxy :: Proxy (PackedList Float)))
+  , testProperty "double"   (prop_wire (Proxy :: Proxy (PackedList Double)))
+  , testProperty "bool"     (prop_wire (Proxy :: Proxy (PackedList Bool)))
   ]
 
 requiredSingleValueTests :: [Test]
