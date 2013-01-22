@@ -16,6 +16,7 @@ import Test.QuickCheck.Property
 import GHC.Generics (Generic)
 
 import Control.Applicative
+import Control.Exception (SomeException, evaluate, try)
 import Control.Monad
 import Control.Monad.Identity
 import qualified Data.ByteString as B
@@ -104,7 +105,7 @@ optionalSingleValueTests =
   ]
 
 tagsOutOfRangeTests =
-  [ testProperty "word32" prop_req_word32_out_of_range
+  [ testProperty "word32" (prop_req_out_of_range (Proxy :: Proxy Word32))
   ]
 
 instance Arbitrary a => Arbitrary (Required n a) where
@@ -190,6 +191,13 @@ prop_roundtrip msg = do
     Right msg' -> property $ msg == msg'
     Left err   -> fail err
 
+prop_encode_fail :: Encode a => a -> Property
+prop_encode_fail msg = morallyDubiousIOProperty $ do
+  res <- try . evaluate . runPut $ encodeMessage msg
+  return $ case res :: Either SomeException B.ByteString of
+    Left  _ -> True
+    Right _ -> False
+
 prop_req_reify_out_of_range :: forall a r . Last a -> (forall n . Nat n => RequiredValue n a -> Gen r) -> Gen r
 prop_req_reify_out_of_range a f = do
   let g :: forall n . Nat n => n -> Gen r
@@ -216,10 +224,10 @@ prop_req_reify a f = do
   n <- choose (0, 536870911)
   reifyIntegral (n :: Int32) g
 
-prop_req_word32_out_of_range :: Property
-prop_req_word32_out_of_range = expectFailure $ do
+prop_req_out_of_range :: forall a . (Arbitrary a, EncodeWire a) => Proxy a -> Property
+prop_req_out_of_range _ = do
   val <- Last . Just <$> arbitrary
-  prop_req_reify_out_of_range (val :: Last Word32) prop_roundtrip
+  prop_req_reify_out_of_range (val :: Last a) prop_encode_fail
 
 prop_req :: forall a . (Arbitrary a, Eq a, EncodeWire a, DecodeWire a, Typeable a) => Proxy a -> Property
 prop_req _ = label ("prop_req :: " ++ show (typeOf (undefined :: a))) $ do
