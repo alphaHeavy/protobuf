@@ -6,7 +6,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
-import Test.Framework (defaultMain, testGroup)
+import Test.Framework (Test, defaultMain, testGroup)
 import Test.Framework.Providers.HUnit
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck
@@ -47,22 +47,27 @@ tests =
   , testProperty "Generic length prefixed message coding" prop_generic_length_prefixed
   ]
 
-primitiveWireTests =
-  [ testProperty "int32"    (prop_wire (Proxy :: Proxy Int32))
-  , testProperty "int64"    (prop_wire (Proxy :: Proxy Int64))
-  , testProperty "word32"   (prop_wire (Proxy :: Proxy Word32))
-  , testProperty "word64"   (prop_wire (Proxy :: Proxy Word64))
-  , testProperty "sint32"   (prop_wire (Proxy :: Proxy (Signed Int32)))
-  , testProperty "sint64"   (prop_wire (Proxy :: Proxy (Signed Int64)))
-  , testProperty "fixed32"  (prop_wire (Proxy :: Proxy (Pb.Fixed Word32)))
-  , testProperty "fixed64"  (prop_wire (Proxy :: Proxy (Pb.Fixed Word64)))
-  , testProperty "sfixed32" (prop_wire (Proxy :: Proxy (Pb.Fixed Int32)))
-  , testProperty "sfixed64" (prop_wire (Proxy :: Proxy (Pb.Fixed Int64)))
-  , testProperty "float"    (prop_wire (Proxy :: Proxy Float))
-  , testProperty "double"   (prop_wire (Proxy :: Proxy Double))
-  , testProperty "bool"     (prop_wire (Proxy :: Proxy Bool))
+primitiveTests :: (forall a . (Eq a, Typeable a, Arbitrary a, EncodeWire a, DecodeWire a) => Proxy a -> Property) -> [Test]
+primitiveTests f =
+  [ testProperty "int32"    (f (Proxy :: Proxy Int32))
+  , testProperty "int64"    (f (Proxy :: Proxy Int64))
+  , testProperty "word32"   (f (Proxy :: Proxy Word32))
+  , testProperty "word64"   (f (Proxy :: Proxy Word64))
+  , testProperty "sint32"   (f (Proxy :: Proxy (Signed Int32)))
+  , testProperty "sint64"   (f (Proxy :: Proxy (Signed Int64)))
+  , testProperty "fixed32"  (f (Proxy :: Proxy (Pb.Fixed Word32)))
+  , testProperty "fixed64"  (f (Proxy :: Proxy (Pb.Fixed Word64)))
+  , testProperty "sfixed32" (f (Proxy :: Proxy (Pb.Fixed Int32)))
+  , testProperty "sfixed64" (f (Proxy :: Proxy (Pb.Fixed Int64)))
+  , testProperty "float"    (f (Proxy :: Proxy Float))
+  , testProperty "double"   (f (Proxy :: Proxy Double))
+  , testProperty "bool"     (f (Proxy :: Proxy Bool))
   ]
 
+primitiveWireTests :: [Test]
+primitiveWireTests = primitiveTests prop_wire
+
+packedWireTests :: [Test]
 packedWireTests =
   [ testProperty "int32"    (prop_wire (Proxy :: Proxy (PackedList Int32)))
   , testProperty "int64"    (prop_wire (Proxy :: Proxy (PackedList Int64)))
@@ -72,41 +77,14 @@ packedWireTests =
   , testProperty "sint64"   (prop_wire (Proxy :: Proxy (PackedList (Signed Int64))))
   ]
 
-requiredSingleValueTests =
-  [ testProperty "int32"    (prop_req (Proxy :: Proxy Int32))
-  , testProperty "int64"    (prop_req (Proxy :: Proxy Int64))
-  , testProperty "word32"   (prop_req (Proxy :: Proxy Word32))
-  , testProperty "word64"   (prop_req (Proxy :: Proxy Word64))
-  , testProperty "sint32"   (prop_req (Proxy :: Proxy (Signed Int32)))
-  , testProperty "sint64"   (prop_req (Proxy :: Proxy (Signed Int64)))
-  , testProperty "fixed32"  (prop_req (Proxy :: Proxy (Pb.Fixed Word32)))
-  , testProperty "fixed64"  (prop_req (Proxy :: Proxy (Pb.Fixed Word64)))
-  , testProperty "sfixed32" (prop_req (Proxy :: Proxy (Pb.Fixed Int32)))
-  , testProperty "sfixed64" (prop_req (Proxy :: Proxy (Pb.Fixed Int64)))
-  , testProperty "float"    (prop_req (Proxy :: Proxy Float))
-  , testProperty "double"   (prop_req (Proxy :: Proxy Double))
-  , testProperty "bool"     (prop_req (Proxy :: Proxy Bool))
-  ]
+requiredSingleValueTests :: [Test]
+requiredSingleValueTests = primitiveTests prop_req
 
-optionalSingleValueTests =
-  [ testProperty "int32"    (prop_opt (Proxy :: Proxy Int32))
-  , testProperty "int64"    (prop_opt (Proxy :: Proxy Int64))
-  , testProperty "word32"   (prop_opt (Proxy :: Proxy Word32))
-  , testProperty "word64"   (prop_opt (Proxy :: Proxy Word64))
-  , testProperty "sint32"   (prop_opt (Proxy :: Proxy (Signed Int32)))
-  , testProperty "sint64"   (prop_opt (Proxy :: Proxy (Signed Int64)))
-  , testProperty "fixed32"  (prop_opt (Proxy :: Proxy (Pb.Fixed Word32)))
-  , testProperty "fixed64"  (prop_opt (Proxy :: Proxy (Pb.Fixed Word64)))
-  , testProperty "sfixed32" (prop_opt (Proxy :: Proxy (Pb.Fixed Int32)))
-  , testProperty "sfixed64" (prop_opt (Proxy :: Proxy (Pb.Fixed Int64)))
-  , testProperty "float"    (prop_opt (Proxy :: Proxy Float))
-  , testProperty "double"   (prop_opt (Proxy :: Proxy Double))
-  , testProperty "bool"     (prop_opt (Proxy :: Proxy Bool))
-  ]
+optionalSingleValueTests :: [Test]
+optionalSingleValueTests = primitiveTests prop_opt
 
-tagsOutOfRangeTests =
-  [ testProperty "word32" (prop_req_out_of_range (Proxy :: Proxy Word32))
-  ]
+tagsOutOfRangeTests :: [Test]
+tagsOutOfRangeTests = primitiveTests prop_req_out_of_range
 
 instance Arbitrary a => Arbitrary (Required n a) where
   arbitrary = putValue <$> arbitrary
