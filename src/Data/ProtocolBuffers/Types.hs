@@ -23,7 +23,7 @@ module Data.ProtocolBuffers.Types
   , Fixed(..)
   , Signed(..)
   , PackedList(..)
-  , PackedWitness(..)
+  , PackedField(..)
   , GetValue(..)
   , GetEnum(..)
   ) where
@@ -46,8 +46,8 @@ type Required (n :: *) a = Tagged n (Identity a)
 -- | Lists of values.
 type Repeated (n :: *) a = Tagged n [a]
 
--- | Lists of values.
-type Packed (n :: *) a = Tagged n (PackedWitness (PackedList a))
+-- | Packed values.
+type Packed (n :: *) a = Tagged n (PackedField (PackedList a))
 
 instance Show a => Show (Required n a) where
   show (Tagged (Identity x)) = show (Tagged x :: Tagged n a)
@@ -68,25 +68,25 @@ newtype Optionally a = Optionally {runOptionally :: a}
 
 -- | A 'Maybe' lens on an 'Optional' field.
 instance GetValue (Optional n a) where
-  type GetValueType (Tagged n (Optionally a)) = a
+  type GetValueType (Optional n a) = a
   getValue = runOptionally . unTagged
   putValue = Tagged . Optionally
 
 -- | A list lens on an 'Repeated' field.
 instance GetValue (Repeated n a) where
-  type GetValueType (Tagged n [a]) = [a]
+  type GetValueType (Repeated n a) = [a]
   getValue = unTagged
   putValue = Tagged
 
--- | A list lens on an 'Repeated' field.
+-- | A list lens on an 'Packed' field.
 instance GetValue (Packed n a) where
   type GetValueType (Packed n a) = [a]
-  getValue = unPackedList . unPackWitness . unTagged
-  putValue = Tagged . PackedWitness . PackedList
+  getValue = unPackedList . unPackedField . unTagged
+  putValue = Tagged . PackedField . PackedList
 
 -- | An 'Identity' lens on an 'Required' field.
 instance GetValue (Required n a) where
-  type GetValueType (Tagged n (Identity a)) = a
+  type GetValueType (Required n a) = a
   getValue = runIdentity . unTagged
   putValue = Tagged . Identity
 
@@ -152,7 +152,7 @@ instance Enum a => GetEnum (Repeated n (Enumeration [a])) where
 
 -- |
 -- A traversable functor used to select packed sequence encoding/decoding.
-newtype PackedWitness a = PackedWitness {unPackWitness :: a}
+newtype PackedField a = PackedField {unPackedField :: a}
   deriving (Eq, Foldable, Functor, Monoid, NFData, Ord, Show, Traversable, Typeable)
 
 -- |

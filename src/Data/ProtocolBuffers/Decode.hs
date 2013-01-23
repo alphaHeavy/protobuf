@@ -101,7 +101,7 @@ instance (DecodeWire (PackedList a), Tl.Nat n) => GDecode (K1 i (Packed n a)) wh
   gdecode msg =
     let tag = fromIntegral $ Tl.toInt (undefined :: n)
     in case HashMap.lookup tag msg of
-      Just val -> K1 . Tagged . PackedWitness <$> foldMapM decodeWire val
+      Just val -> K1 . Tagged . PackedField <$> foldMapM decodeWire val
       Nothing  -> empty
 
 foldMapM :: (Monad m, Foldable t, Monoid b) => (a -> m b) -> t a -> m b

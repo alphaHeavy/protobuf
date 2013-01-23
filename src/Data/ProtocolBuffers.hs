@@ -75,8 +75,8 @@ module Data.ProtocolBuffers
     -- * Value Selectors
     --
   , Enumeration
+  , PackedField(..)
   , PackedList(..)
-  , PackedWitness(..)
   , Message (..)
   , Optionally
   , Signed(..)
