@@ -273,13 +273,13 @@ test2 :: Assertion
 test2 = testSpecific msg =<< unhex "120774657374696e67" where
   msg = Test2{test2_b = putValue "testing"}
 
-data Test3 = Test3{test3_c :: Required D3 (EmbeddedMessage Test1)} deriving (Generic, Eq, Show)
+data Test3 = Test3{test3_c :: Required D3 (Message Test1)} deriving (Generic, Eq, Show)
 instance Encode Test3
 instance Decode Test3
 
 test3 :: Assertion
 test3 = testSpecific msg =<< unhex "1a03089601" where
-  msg = Test3{test3_c = putValue (EmbeddedMessage (Just Test1{test1_a = putValue (Last (Just 150))}))}
+  msg = Test3{test3_c = putValue (Message (Just Test1{test1_a = putValue (Last (Just 150))}))}
 
 data Test4 = Test4{test4_d :: Packed D4 Word32} deriving (Generic, Eq, Show)
 instance Encode Test4

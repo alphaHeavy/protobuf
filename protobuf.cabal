@@ -28,8 +28,8 @@ library
     Data.ProtocolBuffers.Internal
   other-modules:
     Data.ProtocolBuffers.Decode
-    Data.ProtocolBuffers.EmbeddedMessage
     Data.ProtocolBuffers.Encode
+    Data.ProtocolBuffers.Message
     Data.ProtocolBuffers.Types
     Data.ProtocolBuffers.Wire
   build-depends:

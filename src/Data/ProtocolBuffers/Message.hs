@@ -3,8 +3,8 @@
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Data.ProtocolBuffers.EmbeddedMessage
-  ( EmbeddedMessage(..)
+module Data.ProtocolBuffers.Message
+  ( Message(..)
   ) where
 
 import Control.Applicative
@@ -22,30 +22,30 @@ import Data.ProtocolBuffers.Wire
 -- |
 -- A newtype wrapper used to distinguish encoded messages from other field types.
 -- These messages are stored as delimited fields.
-newtype EmbeddedMessage m = EmbeddedMessage (Maybe m)
+newtype Message m = Message (Maybe m)
   deriving (Eq, Foldable, Functor, NFData, Ord, Show, Traversable)
 
-instance Monoid (EmbeddedMessage m) where
-  mempty = EmbeddedMessage Nothing
+instance Monoid (Message m) where
+  mempty = Message Nothing
   _ `mappend` m = m
 
-instance Applicative EmbeddedMessage where
-  pure = EmbeddedMessage . Just
-  EmbeddedMessage (Just f) <*> x = f <$> x
-  EmbeddedMessage Nothing  <*> _ = EmbeddedMessage Nothing
+instance Applicative Message where
+  pure = Message . Just
+  Message (Just f) <*> x = f <$> x
+  Message Nothing  <*> _ = Message Nothing
 
-instance Monad EmbeddedMessage where
+instance Monad Message where
   return = pure
-  EmbeddedMessage (Just f) >>= x = x f
-  EmbeddedMessage Nothing  >>= _ = EmbeddedMessage Nothing
+  Message (Just f) >>= x = x f
+  Message Nothing  >>= _ = Message Nothing
 
-instance Encode m => EncodeWire (EmbeddedMessage m) where
-  encodeWire t (EmbeddedMessage m) =
+instance Encode m => EncodeWire (Message m) where
+  encodeWire t (Message m) =
     traverse_ (encodeWire t . runPut . encode) m
 
-instance Decode m => DecodeWire (EmbeddedMessage m) where
+instance Decode m => DecodeWire (Message m) where
   decodeWire (DelimitedField _ bs) =
     case runGet decodeMessage bs of
-      Right val -> pure . EmbeddedMessage $ Just val
+      Right val -> pure . Message $ Just val
       Left err  -> fail $ "Embedded message decoding failed: " ++ show err
   decodeWire _ = empty

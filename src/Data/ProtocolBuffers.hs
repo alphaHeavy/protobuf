@@ -77,13 +77,13 @@ module Data.ProtocolBuffers
   , Enumeration
   , PackedList(..)
   , PackedWitness(..)
-  , EmbeddedMessage (..)
+  , Message (..)
   , Optionally
   , Signed(..)
   , Fixed(..)
   ) where
 
 import Data.ProtocolBuffers.Decode
-import Data.ProtocolBuffers.EmbeddedMessage
+import Data.ProtocolBuffers.Message
 import Data.ProtocolBuffers.Encode
 import Data.ProtocolBuffers.Types
