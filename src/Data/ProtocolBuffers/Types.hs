@@ -23,6 +23,7 @@ module Data.ProtocolBuffers.Types
   , Fixed(..)
   , Signed(..)
   , PackedList(..)
+  , PackedWitness(..)
   , GetValue(..)
   , GetEnum(..)
   ) where
@@ -46,7 +47,7 @@ type Required (n :: *) a = Tagged n (Identity a)
 type Repeated (n :: *) a = Tagged n [a]
 
 -- | Lists of values.
-type Packed (n :: *) a = Tagged n (PackedList a)
+type Packed (n :: *) a = Tagged n (PackedWitness (PackedList a))
 
 instance Show a => Show (Required n a) where
   show (Tagged (Identity x)) = show (Tagged x :: Tagged n a)
@@ -79,9 +80,9 @@ instance GetValue (Repeated n a) where
 
 -- | A list lens on an 'Repeated' field.
 instance GetValue (Packed n a) where
-  type GetValueType (Tagged n (PackedList a)) = [a]
-  getValue = unPackedList . unTagged
-  putValue = Tagged . PackedList
+  type GetValueType (Packed n a) = [a]
+  getValue = unPackedList . unPackWitness . unTagged
+  putValue = Tagged . PackedWitness . PackedList
 
 -- | An 'Identity' lens on an 'Required' field.
 instance GetValue (Required n a) where
@@ -148,6 +149,11 @@ instance Enum a => GetEnum (Repeated n (Enumeration [a])) where
   type GetEnumResult (Tagged n [Enumeration [a]]) = [a]
   getEnum = Fold.concatMap getEnum . unTagged
   putEnum = Tagged . (:[]) . Enumeration
+
+-- |
+-- A traversable functor used to select packed sequence encoding/decoding.
+newtype PackedWitness a = PackedWitness {unPackWitness :: a}
+  deriving (Eq, Foldable, Functor, Monoid, NFData, Ord, Show, Traversable, Typeable)
 
 -- |
 -- A list that is stored in a packed format.

@@ -54,6 +54,7 @@ tests =
   , testCase "Google Reference Test1" test1
   , testCase "Google Reference Test2" test2
   , testCase "Google Reference Test3" test3
+  , testCase "Google Reference Test4" test4
   ]
 
 primitiveTests :: (forall a . (Eq a, Typeable a, Arbitrary a, EncodeWire a, DecodeWire a) => Proxy a -> Property) -> [Test]
@@ -279,3 +280,11 @@ instance Decode Test3
 test3 :: Assertion
 test3 = testSpecific msg =<< unhex "1a03089601" where
   msg = Test3{test3_c = putValue (EmbeddedMessage (Just Test1{test1_a = putValue (Last (Just 150))}))}
+
+data Test4 = Test4{test4_d :: Packed D4 Word32} deriving (Generic, Eq, Show)
+instance Encode Test4
+instance Decode Test4
+
+test4 :: Assertion
+test4 = testSpecific msg =<< unhex "2206038e029ea705" where
+  msg = Test4{test4_d = putValue [3,270,86942]}

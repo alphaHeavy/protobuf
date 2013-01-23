@@ -76,6 +76,7 @@ module Data.ProtocolBuffers
     --
   , Enumeration
   , PackedList(..)
+  , PackedWitness(..)
   , EmbeddedMessage (..)
   , Optionally
   , Signed(..)
