@@ -10,7 +10,7 @@
 import Test.Framework (Test, defaultMain, testGroup)
 import Test.Framework.Providers.HUnit
 import Test.Framework.Providers.QuickCheck2 (testProperty)
-import Test.HUnit (Assertion, assertEqual, assertFailure)
+import Test.HUnit (Assertion, assert, assertEqual, assertFailure)
 import Test.QuickCheck
 import Test.QuickCheck.Modifiers
 import Test.QuickCheck.Property
@@ -55,6 +55,7 @@ tests =
   , testCase "Google Reference Test2" test2
   , testCase "Google Reference Test3" test3
   , testCase "Google Reference Test4" test4
+  , testCase "Google WireFormatTest ZigZag" wireFormatZZ
   ]
 
 primitiveTests :: (forall a . (Eq a, Typeable a, Arbitrary a, EncodeWire a, DecodeWire a) => Proxy a -> Property) -> [Test]
@@ -288,3 +289,67 @@ instance Decode Test4
 test4 :: Assertion
 test4 = testSpecific msg =<< unhex "2206038e029ea705" where
   msg = Test4{test4_d = putValue [3,270,86942]}
+
+-- some from http://code.google.com/p/protobuf/source/browse/trunk/src/google/protobuf/wire_format_unittest.cc
+wireFormatZZ :: Assertion
+wireFormatZZ = do
+  assert $ 0 == zzEncode32   0
+  assert $ 1 == zzEncode32 (-1)
+  assert $ 2 == zzEncode32   1
+  assert $ 3 == zzEncode32 (-2)
+  assert $ 0x7FFFFFFE == zzEncode32 0x3FFFFFFF
+  assert $ 0x7FFFFFFF == zzEncode32 0xC0000000
+  assert $ 0xFFFFFFFE == zzEncode32 0x7FFFFFFF
+  assert $ 0xFFFFFFFF == zzEncode32 0x80000000
+
+  assert $   0  == zzDecode32 0
+  assert $ (-1) == zzDecode32 1
+  assert $   1  == zzDecode32 2
+  assert $ (-2) == zzDecode32 3
+  assert $ 0x3FFFFFFF == zzDecode32 0x7FFFFFFE
+  assert $ 0xC0000000 == zzDecode32 0x7FFFFFFF
+  assert $ 0x7FFFFFFF == zzDecode32 0xFFFFFFFE
+  assert $ 0x80000000 == zzDecode32 0xFFFFFFFF
+
+  assert $ 0 == zzEncode64   0
+  assert $ 1 == zzEncode64 (-1)
+  assert $ 2 == zzEncode64   1
+  assert $ 3 == zzEncode64 (-2)
+  assert $ 0x000000007FFFFFFE == zzEncode64 0x000000003FFFFFFF
+  assert $ 0x000000007FFFFFFF == zzEncode64 0xFFFFFFFFC0000000
+  assert $ 0x00000000FFFFFFFE == zzEncode64 0x000000007FFFFFFF
+  assert $ 0x00000000FFFFFFFF == zzEncode64 0xFFFFFFFF80000000
+  assert $ 0xFFFFFFFFFFFFFFFE == zzEncode64 0x7FFFFFFFFFFFFFFF
+  assert $ 0xFFFFFFFFFFFFFFFF == zzEncode64 0x8000000000000000
+
+  assert $   0  == zzDecode64 0
+  assert $ (-1) == zzDecode64 1
+  assert $   1  == zzDecode64 2
+  assert $ (-2) == zzDecode64 3
+  assert $ 0x000000003FFFFFFF == zzDecode64 0x000000007FFFFFFE
+  assert $ 0xFFFFFFFFC0000000 == zzDecode64 0x000000007FFFFFFF
+  assert $ 0x000000007FFFFFFF == zzDecode64 0x00000000FFFFFFFE
+  assert $ 0xFFFFFFFF80000000 == zzDecode64 0x00000000FFFFFFFF
+  assert $ 0x7FFFFFFFFFFFFFFF == zzDecode64 0xFFFFFFFFFFFFFFFE
+  assert $ 0x8000000000000000 == zzDecode64 0xFFFFFFFFFFFFFFFF
+
+  -- these tests are already covered by QuickCheck properties:
+  -- Some easier-to-verify round-trip tests.  The inputs (other than 0, 1, -1)
+  -- were chosen semi-randomly via keyboard bashing.
+  let rt32 = zzDecode32 . zzEncode32
+      rt64 = zzDecode64 . zzEncode64
+
+  assert $      0  == rt32      0
+  assert $      1  == rt32      1
+  assert $ (   -1) == rt32 (   -1)
+  assert $  14927  == rt32  14927
+  assert $ (-3612) == rt32 (-3612)
+
+  assert $      0  == rt64      0
+  assert $      1  == rt64      1
+  assert $ (   -1) == rt64 (   -1)
+  assert $  14927  == rt64  14927
+  assert $ (-3612) == rt64 (-3612)
+
+  assert $     856912304801416  == rt64     856912304801416
+  assert $ (-75123905439571256) == rt64 (-75123905439571256)

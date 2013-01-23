@@ -19,6 +19,10 @@ module Data.ProtocolBuffers.Wire
   , getVarintPrefixedBS
   , putVarSInt
   , putVarUInt
+  , zzEncode32
+  , zzEncode64
+  , zzDecode32
+  , zzDecode64
   ) where
 
 import Control.Applicative
