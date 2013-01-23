@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeSynonymInstances #-}
@@ -9,6 +10,7 @@
 import Test.Framework (Test, defaultMain, testGroup)
 import Test.Framework.Providers.HUnit
 import Test.Framework.Providers.QuickCheck2 (testProperty)
+import Test.HUnit (Assertion, assertEqual, assertFailure)
 import Test.QuickCheck
 import Test.QuickCheck.Modifiers
 import Test.QuickCheck.Property
@@ -20,19 +22,23 @@ import Control.Exception (SomeException, evaluate, try)
 import Control.Monad
 import Control.Monad.Identity
 import qualified Data.ByteString as B
+import Data.ByteString.Char8 ()
 import Data.ProtocolBuffers as Pb
 import Data.ProtocolBuffers.Internal as Pb
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
+import Data.Hex
 import Data.Int
 import Data.List
 import Data.Monoid
 import Data.Serialize (runGet, runPut)
 import Data.Proxy
 import Data.Tagged
+import Data.Text (Text)
+import qualified Data.Text as T
 import Data.Typeable
 import Data.Word
-import Data.TypeLevel.Num (Nat, reifyIntegral)
+import Data.TypeLevel (D1, D2, D3, D4, Nat, reifyIntegral)
 
 main :: IO ()
 main = defaultMain tests
@@ -45,6 +51,9 @@ tests =
   , testGroup "Tags Out of Range" tagsOutOfRangeTests
   , testProperty "Generic message coding" prop_generic
   , testProperty "Generic length prefixed message coding" prop_generic_length_prefixed
+  , testCase "Google Reference Test1" test1
+  , testCase "Google Reference Test2" test2
+  , testCase "Google Reference Test3" test3
   ]
 
 primitiveTests :: (forall a . (Eq a, Typeable a, Arbitrary a, EncodeWire a, DecodeWire a) => Proxy a -> Property) -> [Test]
@@ -237,3 +246,36 @@ prop_opt :: forall a . (Arbitrary a, Eq a, EncodeWire a, DecodeWire a, Typeable 
 prop_opt _ = label ("prop_opt :: " ++ show (typeOf (undefined :: a))) $ do
   val <- Last <$> arbitrary
   prop_opt_reify (val :: Last a) prop_roundtrip
+
+-- implement the examples from https://developers.google.com/protocol-buffers/docs/encoding
+testSpecific msg ref = do
+  let bs = runPut $ encodeMessage msg
+  assertEqual "Encoded message mismatch" bs ref
+
+  case runGet decodeMessage bs of
+    Right msg' -> assertEqual "Decoded message mismatch" msg msg'
+    Left err   -> assertFailure err
+
+data Test1 = Test1{test1_a :: Required D1 (Last Int32)} deriving (Generic, Eq, Show)
+instance Encode Test1
+instance Decode Test1
+
+test1 :: Assertion
+test1 = testSpecific msg =<< unhex "089601" where
+  msg = Test1{test1_a = putValue (Last (Just 150))}
+
+data Test2 = Test2{test2_b :: Required D2 Text} deriving (Generic, Eq, Show)
+instance Encode Test2
+instance Decode Test2
+
+test2 :: Assertion
+test2 = testSpecific msg =<< unhex "120774657374696e67" where
+  msg = Test2{test2_b = putValue "testing"}
+
+data Test3 = Test3{test3_c :: Required D3 (EmbeddedMessage Test1)} deriving (Generic, Eq, Show)
+instance Encode Test3
+instance Decode Test3
+
+test3 :: Assertion
+test3 = testSpecific msg =<< unhex "1a03089601" where
+  msg = Test3{test3_c = putValue (EmbeddedMessage (Just Test1{test1_a = putValue (Last (Just 150))}))}
