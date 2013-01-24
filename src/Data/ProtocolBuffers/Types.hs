@@ -55,13 +55,17 @@ instance Show a => Show (Required n a) where
 instance Eq a => Eq (Required n a) where
   Tagged (Identity x) == Tagged (Identity y) = x == y
 
--- | What will become an isomorphism lens...
+-- | Functions for wrapping and unwrapping record fields
 class GetValue a where
   type GetValueType a :: *
   -- | Extract a value from it's 'Tagged' representation.
   getValue :: a -> GetValueType a
   -- | Wrap it back up again.
   putValue :: GetValueType a -> a
+
+  -- | An isomorphism lens compatible with the lens package
+  value :: Functor f => (GetValueType a -> f (GetValueType a)) -> a -> f a
+  value f = fmap putValue . f . getValue
 
 newtype Optionally a = Optionally {runOptionally :: a}
   deriving (Bounded, Eq, Enum, Foldable, Functor, Monoid, Ord, NFData, Show, Traversable, Typeable)
@@ -124,6 +128,10 @@ class GetEnum a where
   type GetEnumResult a :: *
   getEnum :: a -> GetEnumResult a
   putEnum :: GetEnumResult a -> a
+
+  -- | An isomorphism lens compatible with the lens package
+  enum :: Functor f => (GetEnumResult a -> f (GetEnumResult a)) -> a -> f a
+  enum f = fmap putEnum . f . getEnum
 
 instance GetEnum (Enumeration a) where
   type GetEnumResult (Enumeration a) = a
