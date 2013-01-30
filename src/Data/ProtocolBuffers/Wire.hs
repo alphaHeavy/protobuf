@@ -267,6 +267,12 @@ instance DecodeWire ByteString where
   decodeWire (DelimitedField _ bs) = pure bs
   decodeWire _ = empty
 
+instance EncodeWire String where
+  encodeWire t = encodeWire t . T.pack
+
+instance DecodeWire String where
+  decodeWire = fmap T.unpack . decodeWire
+
 instance EncodeWire T.Text where
   encodeWire t = encodeWire t . T.encodeUtf8
 
