@@ -60,6 +60,7 @@ executable protoc-gen-hs
     base              >= 3      && < 5,
     bytestring,
     cereal,
+    ghc-prim,
     haskell-src-exts,
     mtl,
     protobuf,
