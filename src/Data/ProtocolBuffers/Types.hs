@@ -98,7 +98,7 @@ instance GetValue (Required n a) where
 -- A newtype wrapper used to distinguish 'Prelude.Enum's from other field types.
 -- 'Enumeration' fields use 'Prelude.fromEnum' and 'Prelude.toEnum' when encoding and decoding messages.
 newtype Enumeration a = Enumeration a
-  deriving (Bounded, Eq, Enum, Foldable, Functor, Ord, NFData, Traversable, Typeable)
+  deriving (Bounded, Eq, Enum, Foldable, Functor, Ord, NFData, Show, Traversable, Typeable)
 
 instance Show a => Show (Enumeration (Identity a)) where
   show (Enumeration (Identity a)) = "Enumeration " ++ show a
