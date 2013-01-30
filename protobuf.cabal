@@ -30,6 +30,7 @@ library
     Data.ProtocolBuffers.Decode
     Data.ProtocolBuffers.Encode
     Data.ProtocolBuffers.Message
+    Data.ProtocolBuffers.Ppr
     Data.ProtocolBuffers.Types
     Data.ProtocolBuffers.Wire
   build-depends:
@@ -40,6 +41,7 @@ library
     deepseq,
     ghc-prim,
     mtl,
+    pretty,
     tagged,
     text,
     type-level,

@@ -13,36 +13,34 @@ import Data.Word
 import Data.ProtocolBuffers.Types
 import Data.Proxy
 import Data.TypeLevel (Nat, D4, D5, D6, toInt)
-import Data.Typeable
+-- import Data.Typeable
 import Text.PrettyPrint
 import GHC.Generics
 
 data Foo = Foo {myField :: Required D4 Int64, theSecondField :: Optional D5 Float, aPackedField :: Packed D6 Int32} deriving (Show, Generic)
 
-data Proxy2 (f :: * -> *) = Proxy2
-
 prettyProto :: forall a . (Generic a, GPrettyProto (Rep a)) => Proxy a -> Doc
-prettyProto _ = gprettyProto (Proxy2 :: Proxy2 (Rep a))
+prettyProto _ = gprettyProto (Proxy :: Proxy (Rep a))
 
 class GPrettyProto (f :: * -> *) where
-  gprettyProto :: Proxy2 f -> Doc
+  gprettyProto :: Proxy f -> Doc
 
 instance (GPrettyProto f, Datatype d) => GPrettyProto (D1 d f) where
-  gprettyProto _ = text "message" <+> text (datatypeName (undefined :: t d f a)) $$ gprettyProto (Proxy2 :: Proxy2 f)
+  gprettyProto _ = text "message" <+> text (datatypeName (undefined :: t d f a)) $$ gprettyProto (Proxy :: Proxy f)
 
 instance (GPrettyProto f, Constructor c) => GPrettyProto (C1 c f) where
-  -- gprettyProto _ = text (conName (undefined :: t c f a)) $$ braces (gprettyProto (Proxy2 :: Proxy2 f))
-  gprettyProto _ = braces (gprettyProto (Proxy2 :: Proxy2 f))
+  -- gprettyProto _ = text (conName (undefined :: t c f a)) $$ braces (gprettyProto (Proxy :: Proxy f))
+  gprettyProto _ = braces (gprettyProto (Proxy :: Proxy f))
 
 instance (GPrettyProtoSel f, Selector s) => GPrettyProto (S1 s f) where
-  gprettyProto _ = gprettyProtoSel (Proxy2 :: Proxy2 f) selName' where
+  gprettyProto _ = gprettyProtoSel (Proxy :: Proxy f) selName' where
     selName' = selName (undefined :: t s f a)
 
 instance (GPrettyProto x, GPrettyProto y) => GPrettyProto (x :*: y) where
-  gprettyProto _ = gprettyProto (Proxy2 :: Proxy2 x) $+$ gprettyProto (Proxy2 :: Proxy2 y)
+  gprettyProto _ = gprettyProto (Proxy :: Proxy x) $+$ gprettyProto (Proxy :: Proxy y)
 
 class GPrettyProtoSel (f :: * -> *) where
-  gprettyProtoSel :: Proxy2 f -> String -> Doc
+  gprettyProtoSel :: Proxy f -> String -> Doc
 
 instance (Nat n, ProtoTypeName c) => GPrettyProtoSel (K1 i (Required n c)) where
   gprettyProtoSel _ selName' = text "required" <+> text (protoTypeName (Proxy :: Proxy c)) <+> text selName'' <+> text "=" <+> text (show (toInt (undefined :: n))) <> char ';' where
