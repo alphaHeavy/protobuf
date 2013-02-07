@@ -15,9 +15,13 @@
 module Data.ProtocolBuffers.Types
   ( Tagged(..)
   , Required
+  , Required'
   , Optional
+  , Optional'
   , Repeated
+  , Repeated'
   , Packed
+  , Packed'
   , Enumeration(..)
   , Optionally(..)
   , Fixed(..)
@@ -25,6 +29,7 @@ module Data.ProtocolBuffers.Types
   , PackedList(..)
   , PackedField(..)
   , GetValue(..)
+  , GetValue'(..)
   , GetEnum(..)
   ) where
 
@@ -32,6 +37,7 @@ import Control.DeepSeq (NFData)
 import Control.Monad.Identity
 import Data.Bits
 import Data.Foldable as Fold
+import Data.Maybe (fromMaybe)
 import Data.Monoid
 import Data.Tagged
 import Data.Traversable
@@ -39,15 +45,19 @@ import Data.Typeable
 
 -- | Optional fields. Values that are not found will return 'Nothing'.
 type Optional (n :: *) a = Tagged n (Optionally a)
+type Optional' n a       = Optional n (Last a)
 
 -- | Required fields. Parsing will return 'Control.Alternative.empty' if a 'Required' value is not found while decoding.
 type Required (n :: *) a = Tagged n (Identity a)
+type Required' n a       = Required n (Last a)
 
 -- | Lists of values.
 type Repeated (n :: *) a = Tagged n [a]
+type Repeated' n a       = Repeated n a
 
 -- | Packed values.
 type Packed (n :: *) a = Tagged n (PackedField (PackedList a))
+type Packed' n a       = Packed n a
 
 instance Show a => Show (Required n a) where
   show (Tagged (Identity x)) = show (Tagged x :: Tagged n a)
@@ -58,14 +68,26 @@ instance Eq a => Eq (Required n a) where
 -- | Functions for wrapping and unwrapping record fields
 class GetValue a where
   type GetValueType a :: *
+
   -- | Extract a value from it's 'Tagged' representation.
   getValue :: a -> GetValueType a
+  -- getValue = getConstant . value Constant
+
   -- | Wrap it back up again.
   putValue :: GetValueType a -> a
+  -- putValue v = runIdentity $ value (const (Identity v)) undefined
 
   -- | An isomorphism lens compatible with the lens package
   value :: Functor f => (GetValueType a -> f (GetValueType a)) -> a -> f a
   value f = fmap putValue . f . getValue
+
+-- | Functions for wrapping and unwrapping record fields that use the Last Monoid
+class GetValue' a where
+  type GetValueType' a :: *
+  getValue' :: a -> GetValueType' a
+  putValue' :: GetValueType' a -> a
+  value' :: Functor f => (GetValueType' a -> f (GetValueType' a)) -> a -> f a
+  value' f = fmap putValue' . f . getValue'
 
 newtype Optionally a = Optionally {runOptionally :: a}
   deriving (Bounded, Eq, Enum, Foldable, Functor, Monoid, Ord, NFData, Show, Traversable, Typeable)
@@ -76,11 +98,23 @@ instance GetValue (Optional n a) where
   getValue = runOptionally . unTagged
   putValue = Tagged . Optionally
 
+instance GetValue' (Optional' n a) where
+  type GetValueType' (Optional' n a) = Maybe a
+  getValue' = getLast . getValue
+  putValue' = putValue . Last
+
+
 -- | A list lens on an 'Repeated' field.
 instance GetValue (Repeated n a) where
   type GetValueType (Repeated n a) = [a]
   getValue = unTagged
   putValue = Tagged
+
+instance GetValue' (Repeated n a) where
+  type GetValueType' (Repeated n a) = [a]
+  getValue' = getValue
+  putValue' = putValue
+
 
 -- | A list lens on an 'Packed' field.
 instance GetValue (Packed n a) where
@@ -88,11 +122,22 @@ instance GetValue (Packed n a) where
   getValue = unPackedList . unPackedField . unTagged
   putValue = Tagged . PackedField . PackedList
 
+instance GetValue' (Packed' n a) where
+  type GetValueType' (Packed' n a) = [a]
+  getValue' = getValue
+  putValue' = putValue
+
+
 -- | An 'Identity' lens on an 'Required' field.
 instance GetValue (Required n a) where
   type GetValueType (Required n a) = a
   getValue = runIdentity . unTagged
   putValue = Tagged . Identity
+
+instance GetValue' (Required' n a) where
+  type GetValueType' (Required' n a) = a
+  getValue' = fromMaybe (error "Required' getValue") . getLast . getValue
+  putValue' = putValue . Last . Just
 
 -- |
 -- A newtype wrapper used to distinguish 'Prelude.Enum's from other field types.
