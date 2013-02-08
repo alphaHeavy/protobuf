@@ -258,13 +258,13 @@ testSpecific msg ref = do
     Right msg' -> assertEqual "Decoded message mismatch" msg msg'
     Left err   -> assertFailure err
 
-data Test1 = Test1{test1_a :: Required D1 (Last Int32)} deriving (Generic, Eq, Show)
+data Test1 = Test1{test1_a :: Required' D1 Int32} deriving (Generic, Eq, Show)
 instance Encode Test1
 instance Decode Test1
 
 test1 :: Assertion
 test1 = testSpecific msg =<< unhex "089601" where
-  msg = Test1{test1_a = putValue (Last (Just 150))}
+  msg = Test1{test1_a = putValue' 150}
 
 data Test2 = Test2{test2_b :: Required D2 Text} deriving (Generic, Eq, Show)
 instance Encode Test2
@@ -280,7 +280,7 @@ instance Decode Test3
 
 test3 :: Assertion
 test3 = testSpecific msg =<< unhex "1a03089601" where
-  msg = Test3{test3_c = putValue (Message (Just Test1{test1_a = putValue (Last (Just 150))}))}
+  msg = Test3{test3_c = putValue (Message (Just Test1{test1_a = putValue' 150}))}
 
 data Test4 = Test4{test4_d :: Packed D4 Word32} deriving (Generic, Eq, Show)
 instance Encode Test4
