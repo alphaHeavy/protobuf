@@ -85,13 +85,14 @@ module Data.ProtocolBuffers
     -- * Simple Value Accessors
     --
   , GetValue'(..)
+  , GetMessage(..)
 
     -- * Value Selectors
     --
   , Enumeration
   , PackedField(..)
   , PackedList(..)
-  , Message (..)
+  , Message(..)
   , Optionally
   , Signed(..)
   , Fixed(..)

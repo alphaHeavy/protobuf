@@ -1,15 +1,20 @@
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module Data.ProtocolBuffers.Message
   ( Message(..)
+  , GetMessage(..)
   ) where
 
 import Control.Applicative
 import Control.DeepSeq (NFData)
 import Data.Foldable
+import Data.Maybe (fromMaybe)
 import Data.Monoid
 import Data.Serialize.Get
 import Data.Serialize.Put
@@ -17,6 +22,7 @@ import Data.Traversable
 
 import Data.ProtocolBuffers.Decode
 import Data.ProtocolBuffers.Encode
+import Data.ProtocolBuffers.Types
 import Data.ProtocolBuffers.Wire
 
 -- |
@@ -41,7 +47,7 @@ import Data.ProtocolBuffers.Wire
 --instance 'Decode' Outer
 -- @
 --
-newtype Message m = Message (Maybe m)
+newtype Message m = Message {runMessage :: Maybe m}
   deriving (Eq, Foldable, Functor, NFData, Ord, Show, Traversable)
 
 instance Monoid (Message m) where
@@ -68,3 +74,22 @@ instance Decode m => DecodeWire (Message m) where
       Right val -> pure . Message $ Just val
       Left err  -> fail $ "Embedded message decoding failed: " ++ show err
   decodeWire _ = empty
+
+
+-- | Functions for wrapping and unwrapping record fields that use the 'Message' type
+class GetMessage a where
+  type GetMessageType a :: *
+  getMessage :: a -> GetMessageType a
+  putMessage :: GetMessageType a -> a
+  message :: Functor f => (GetMessageType a -> f (GetMessageType a)) -> a -> f a
+  message f = fmap putMessage . f . getMessage
+
+instance GetMessage (Required n (Message a)) where
+  type GetMessageType (Required n (Message a)) = a
+  getMessage = fromMaybe (error "Required' getValue") . runMessage . getValue
+  putMessage = putValue . Message . Just
+
+instance GetMessage (Optional n (Message a)) where
+  type GetMessageType (Optional n (Message a)) = Maybe a
+  getMessage = runMessage . getValue
+  putMessage = putValue . Message
