@@ -69,9 +69,17 @@ instance (GMessageMonoid x, GMessageMonoid y) => GMessageMonoid (x :*: y) where
   gmempty = gmempty :*: gmempty
   gmappend (x1 :*: x2) (y1 :*: y2) = gmappend x1 y1 :*: gmappend x2 y2
 
+instance (GMessageMonoid x, GMessageMonoid y) => GMessageMonoid (x :+: y) where
+  gmempty = L1 gmempty
+  gmappend _ = id
+
 instance (Monoid c) => GMessageMonoid (K1 i c) where
   gmempty = K1 mempty
   gmappend (K1 x) (K1 y) = K1 $ mappend x y
+
+instance GMessageMonoid U1 where
+  gmempty = U1
+  gmappend _ = id
 
 instance (Generic m, GMessageNFData (Rep m)) => NFData (Message m) where
   rnf = grnf . from . runMessage
@@ -85,8 +93,15 @@ instance GMessageNFData f => GMessageNFData (M1 i c f) where
 instance (GMessageNFData x, GMessageNFData y) => GMessageNFData (x :*: y) where
   grnf (x :*: y) = grnf x `seq` grnf y
 
+instance (GMessageNFData x, GMessageNFData y) => GMessageNFData (x :+: y) where
+  grnf (L1 x) = grnf x
+  grnf (R1 y) = grnf y
+
 instance NFData c => GMessageNFData (K1 i c) where
   grnf = rnf . unK1
+
+instance GMessageNFData U1 where
+  grnf U1 = ()
 
 type instance Optional n (Message a) = Field n (OptionalField (Message (Maybe a)))
 type instance Required n (Message a) = Field n (RequiredField (Message a))
