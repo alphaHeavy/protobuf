@@ -141,6 +141,9 @@ deriving instance EncodeWire a => EncodeWire (Last (Value a))
 deriving instance DecodeWire a => DecodeWire (Always (Value a))
 deriving instance DecodeWire a => DecodeWire (Last (Value a))
 
+instance EncodeWire a => EncodeWire [Value a] where
+  encodeWire t = traverse_ (encodeWire t)
+
 instance EncodeWire WireField where
   encodeWire t f
     | t == wireFieldTag f = putWireField f
