@@ -14,7 +14,7 @@ module Data.ProtocolBuffers.Message
   ) where
 
 import Control.Applicative
-import Control.DeepSeq (NFData)
+import Control.DeepSeq (NFData(..))
 import Data.Foldable
 import Data.Monoid
 import Data.Serialize.Get
@@ -51,7 +51,7 @@ import Data.ProtocolBuffers.Wire
 -- @
 --
 newtype Message m = Message {runMessage :: m}
-  deriving (Eq, Foldable, Functor, NFData, Ord, Show, Traversable)
+  deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
 instance (Generic m, GMessageMonoid (Rep m)) => Monoid (Message m) where
   mempty = Message . to $ gmempty
@@ -72,6 +72,21 @@ instance (GMessageMonoid x, GMessageMonoid y) => GMessageMonoid (x :*: y) where
 instance (Monoid c) => GMessageMonoid (K1 i c) where
   gmempty = K1 mempty
   gmappend (K1 x) (K1 y) = K1 $ mappend x y
+
+instance (Generic m, GMessageNFData (Rep m)) => NFData (Message m) where
+  rnf = grnf . from . runMessage
+
+class GMessageNFData f where
+  grnf :: f a -> ()
+
+instance GMessageNFData f => GMessageNFData (M1 i c f) where
+  grnf = grnf . unM1
+
+instance (GMessageNFData x, GMessageNFData y) => GMessageNFData (x :*: y) where
+  grnf (x :*: y) = grnf x `seq` grnf y
+
+instance NFData c => GMessageNFData (K1 i c) where
+  grnf = rnf . unK1
 
 type instance Optional n (Message a) = Field n (OptionalField (Message (Maybe a)))
 type instance Required n (Message a) = Field n (RequiredField (Message a))
