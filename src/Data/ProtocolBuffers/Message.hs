@@ -111,3 +111,8 @@ instance HasField (Field n (OptionalField (Message (Maybe a)))) where
   type FieldType (Field n (OptionalField (Message (Maybe a)))) = Maybe a
   getField = runMessage . runOptional . runField
   putField = Field . Optional . Message
+
+instance HasField (Field n (RepeatedField [Message a])) where
+  type FieldType (Field n (RepeatedField [Message a])) = [a]
+  getField = fmap runMessage . runRepeated . runField
+  putField = Field . Repeated . fmap Message

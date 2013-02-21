@@ -99,29 +99,29 @@ instance Enum FieldDescriptorProto_Label where
     fromEnum LABEL_REPEATED      = 3
 
 data FieldOptions = FieldOptions
-  { fieldOptionsPacked     :: Optional Tl.D2 (Last Bool)
-  , fieldOptionsDeprecated :: Optional Tl.D3 (Last Bool)
-  , fieldOptionsLazy       :: Optional Tl.D5 (Last Bool) -- disable strict field?
+  { fieldOptionsPacked     :: Optional Tl.D2 (Value Bool)
+  , fieldOptionsDeprecated :: Optional Tl.D3 (Value Bool)
+  , fieldOptionsLazy       :: Optional Tl.D5 (Value Bool) -- disable strict field?
   -- optional CType ctype = 1 [default = STRING];
   } deriving (Generic, Show)
 
 instance Decode FieldOptions
 
 data FieldDescriptorProto = FieldDescriptorProto
-  { fieldDescriptorName         :: Optional Tl.D1 Text
-  , fieldDescriptorNumber       :: Optional Tl.D3 (Last Int32)
-  , fieldDescriptorLabel        :: Optional Tl.D4 (Enumeration (Maybe FieldDescriptorProto_Label))
-  , fieldDescriptorType         :: Optional Tl.D5 (Enumeration (Maybe FieldDescriptorProto_Type))
-  , fieldDescriptorTypeName     :: Optional Tl.D6 Text
-  , fieldDescriptorExtendee     :: Optional Tl.D2 Text
-  , fieldDescriptorDefaultValue :: Optional Tl.D7 Text
+  { fieldDescriptorName         :: Optional Tl.D1 (Value Text)
+  , fieldDescriptorNumber       :: Optional Tl.D3 (Value Int32)
+  , fieldDescriptorLabel        :: Optional Tl.D4 (Enumeration FieldDescriptorProto_Label)
+  , fieldDescriptorType         :: Optional Tl.D5 (Enumeration FieldDescriptorProto_Type)
+  , fieldDescriptorTypeName     :: Optional Tl.D6 (Value Text)
+  , fieldDescriptorExtendee     :: Optional Tl.D2 (Value Text)
+  , fieldDescriptorDefaultValue :: Optional Tl.D7 (Value Text)
   , fieldDescriptorOptions      :: Optional Tl.D8 (Message FieldOptions)
   } deriving (Generic, Show)
 
 instance Decode FieldDescriptorProto
 
 data DescriptorProto = DescriptorProto
-  { descriptorName       :: Optional Tl.D1 Text
+  { descriptorName       :: Optional Tl.D1 (Value Text)
   , descriptorField      :: Repeated Tl.D2 (Message FieldDescriptorProto)
   , descriptorExtension  :: Repeated Tl.D6 (Message FieldDescriptorProto)
   , descriptorNestedType :: Repeated Tl.D3 (Message DescriptorProto)
@@ -139,11 +139,11 @@ data DescriptorProto = DescriptorProto
 instance Decode DescriptorProto
 
 data FileDescriptorProto = FileDescriptorProto
-  { fileDescriptorName             :: Optional Tl.D1 Text
-  , fileDescriptorPackage          :: Optional Tl.D2 Text
-  , fileDescriptorDependency       :: Repeated Tl.D3 Text
-  , fileDescriptorPublicDependency :: Repeated Tl.D10 Int32
-  , fileDescriptorWeakDependency   :: Repeated Tl.D11 Int32
+  { fileDescriptorName             :: Optional Tl.D1 (Value Text)
+  , fileDescriptorPackage          :: Optional Tl.D2 (Value Text)
+  , fileDescriptorDependency       :: Repeated Tl.D3 (Value Text)
+  , fileDescriptorPublicDependency :: Repeated Tl.D10 (Value Int32)
+  , fileDescriptorWeakDependency   :: Repeated Tl.D11 (Value Int32)
 
   -- All top-level definitions in this file.
   , fileDescriptorMessageType      :: Repeated Tl.D4 (Message DescriptorProto)
@@ -163,23 +163,23 @@ data FileDescriptorProto = FileDescriptorProto
 instance Decode FileDescriptorProto
 
 data CodeGeneratorRequest = CodeGeneratorRequest
-  { fileToGenerate :: Repeated Tl.D1 Text
-  , parameter      :: Optional Tl.D2 Text
+  { fileToGenerate :: Repeated Tl.D1 (Value Text)
+  , parameter      :: Optional Tl.D2 (Value Text)
   , protoFile      :: Repeated Tl.D15 (Message FileDescriptorProto)
   } deriving (Generic, Show)
 
 instance Decode CodeGeneratorRequest
 
 data CodeGeneratorResponse_File = CodeGeneratorResponse_File
-  { responseFileName       :: Optional Tl.D1 Text
-  , responseInsertionPoint :: Optional Tl.D2 Text
-  , responseContent        :: Optional Tl.D15 Text
+  { responseFileName       :: Optional Tl.D1 (Value Text)
+  , responseInsertionPoint :: Optional Tl.D2 (Value Text)
+  , responseContent        :: Optional Tl.D15 (Value Text)
   } deriving (Generic, Show)
 
 instance Encode CodeGeneratorResponse_File
 
 data CodeGeneratorResponse = CodeGeneratorResponse
-  { errorStr :: Optional Tl.D1 String
+  { errorStr :: Optional Tl.D1 (Value String)
   , responseFiles :: Repeated Tl.D15 (Message CodeGeneratorResponse_File)
   } deriving (Generic, Show)
 
@@ -193,19 +193,19 @@ blah fdp = T.pack $ prettyPrint m where
   imports = []
   decls = []
 
-blahs :: [Message FileDescriptorProto] -> [CodeGeneratorResponse_File]
+blahs :: [FileDescriptorProto] -> [CodeGeneratorResponse_File]
 blahs = fmap step where
-  step (Message (Just fpd)) = CodeGeneratorResponse_File
-    { responseFileName = putValue "test.hs"
-    , responseInsertionPoint = putValue ""
-    , responseContent = putValue $ blah fpd
+  step fpd = CodeGeneratorResponse_File
+    { responseFileName = putField $ Just "test.hs"
+    , responseInsertionPoint = putField Nothing
+    , responseContent = putField . Just $ blah fpd
     }
 
 -- getCodeFor :: HashMap Tag [Field] -> Bl.ByteString
 getCodeFor :: CodeGeneratorRequest -> CodeGeneratorResponse
 getCodeFor val = traceShow val CodeGeneratorResponse
-  { errorStr = putValue "" -- some failure string"
-  , responseFiles = putValue . fmap (Message . Just) . blahs . getValue $ protoFile val
+  { errorStr = putField Nothing -- some failure string"
+  , responseFiles = putField . blahs . getField $ protoFile val
   }
 
 main :: IO ()
@@ -214,6 +214,6 @@ main = Bl.interact $ \ input ->
     case runGetLazy decodeMessage input of
       Right val -> getCodeFor val
       Left  err -> CodeGeneratorResponse
-       { errorStr = putValue err
-       , responseFiles = putValue []
+       { errorStr = putField $ Just err
+       , responseFiles = putField []
        }

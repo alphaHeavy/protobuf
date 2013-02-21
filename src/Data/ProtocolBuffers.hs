@@ -81,7 +81,7 @@ module Data.ProtocolBuffers
   , RepeatedField(..)
   , PackedField(..)
   , PackedList(..)
-  , Message
+  , Message(..)
   , Signed(..)
   , Fixed(..)
   ) where
