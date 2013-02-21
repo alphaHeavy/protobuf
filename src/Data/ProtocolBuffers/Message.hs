@@ -95,6 +95,10 @@ instance Encode m => EncodeWire (Message m) where
   encodeWire t =
     encodeWire t . runPut . encode . runMessage
 
+instance Encode m => EncodeWire [Message m] where
+  encodeWire t =
+    traverse_ (encodeWire t . runPut . encode . runMessage)
+
 instance Decode m => DecodeWire (Message m) where
   decodeWire (DelimitedField _ bs) =
     case runGet decodeMessage bs of
