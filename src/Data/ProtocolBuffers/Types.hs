@@ -6,206 +6,132 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE OverlappingInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Data.ProtocolBuffers.Types
-  ( Tagged(..)
+  ( Field(..)
+  , HasField(..)
   , Required
-  , Required'
+  , RequiredField(..)
   , Optional
-  , Optional'
+  , OptionalField(..)
   , Repeated
-  , Repeated'
+  , RepeatedField(..)
   , Packed
-  , Packed'
+  , Value(..)
   , Enumeration(..)
-  , Optionally(..)
   , Fixed(..)
   , Signed(..)
   , PackedList(..)
   , PackedField(..)
-  , GetValue(..)
-  , GetValue'(..)
-  , GetEnum(..)
   ) where
 
 import Control.DeepSeq (NFData)
-import Control.Monad.Identity
 import Data.Bits
 import Data.Foldable as Fold
 import Data.Maybe (fromMaybe)
 import Data.Monoid
-import Data.Tagged
 import Data.Traversable
 import Data.Typeable
 
--- | Optional fields. Values that are not found will return 'Nothing'.
-type Optional (n :: *) a = Tagged n (Optionally a)
-type Optional' n a       = Optional n (Last a)
-
--- | Required fields. Parsing will return 'Control.Alternative.empty' if a 'Required' value is not found while decoding.
-type Required (n :: *) a = Tagged n (Identity a)
-type Required' n a       = Required n (Last a)
-
--- | Lists of values.
-type Repeated (n :: *) a = Tagged n [a]
-type Repeated' n a       = Repeated n a
-
--- | Packed values.
-type Packed (n :: *) a = Tagged n (PackedField (PackedList a))
-type Packed' n a       = Packed n a
-
-instance Show a => Show (Required n a) where
-  show (Tagged (Identity x)) = show (Tagged x :: Tagged n a)
-
-instance Eq a => Eq (Required n a) where
-  Tagged (Identity x) == Tagged (Identity y) = x == y
-
--- | Functions for wrapping and unwrapping record fields
-class GetValue a where
-  type GetValueType a :: *
-
-  -- | Extract a value from it's 'Tagged' representation.
-  getValue :: a -> GetValueType a
-  -- getValue = getConstant . value Constant
-
-  -- | Wrap it back up again.
-  putValue :: GetValueType a -> a
-  -- putValue v = runIdentity $ value (const (Identity v)) undefined
-
-  -- | An isomorphism lens compatible with the lens package
-  value :: Functor f => (GetValueType a -> f (GetValueType a)) -> a -> f a
-  value f = fmap putValue . f . getValue
-
--- | Functions for wrapping and unwrapping record fields that use the Last Monoid
-class GetValue' a where
-  type GetValueType' a :: *
-  getValue' :: a -> GetValueType' a
-  putValue' :: GetValueType' a -> a
-  value' :: Functor f => (GetValueType' a -> f (GetValueType' a)) -> a -> f a
-  value' f = fmap putValue' . f . getValue'
-
-newtype Optionally a = Optionally {runOptionally :: a}
+newtype Value a       = Value       {runValue       :: a}
   deriving (Bounded, Eq, Enum, Foldable, Functor, Monoid, Ord, NFData, Show, Traversable, Typeable)
 
--- | A 'Maybe' lens on an 'Optional' field.
-instance GetValue (Optional n a) where
-  type GetValueType (Optional n a) = a
-  getValue = runOptionally . unTagged
-  putValue = Tagged . Optionally
+newtype RequiredField a    = Required    {runRequired    :: a}
+  deriving (Bounded, Eq, Enum, Foldable, Functor, Monoid, Ord, NFData, Show, Traversable, Typeable)
 
-instance GetValue' (Optional' n a) where
-  type GetValueType' (Optional' n a) = Maybe a
-  getValue' = getLast . getValue
-  putValue' = putValue . Last
+newtype OptionalField a    = Optional    {runOptional    :: a}
+  deriving (Bounded, Eq, Enum, Foldable, Functor, Monoid, Ord, NFData, Show, Traversable, Typeable)
 
+newtype RepeatedField a    = Repeated    {runRepeated    :: a}
+  deriving (Bounded, Eq, Enum, Foldable, Functor, Monoid, Ord, NFData, Show, Traversable, Typeable)
 
--- | A list lens on an 'Repeated' field.
-instance GetValue (Repeated n a) where
-  type GetValueType (Repeated n a) = [a]
-  getValue = unTagged
-  putValue = Tagged
+newtype Field (n :: *) a = Field {runField :: a}
+  deriving (Bounded, Eq, Enum, Foldable, Functor, Monoid, Ord, NFData, Show, Traversable, Typeable)
 
-instance GetValue' (Repeated n a) where
-  type GetValueType' (Repeated n a) = [a]
-  getValue' = getValue
-  putValue' = putValue
+-- | Functions for wrapping and unwrapping record fields
+class HasField a where
+  type FieldType a :: *
 
+  -- | Extract a value from it's 'Field' representation.
+  getField :: a -> FieldType a
 
--- | A list lens on an 'Packed' field.
-instance GetValue (Packed n a) where
-  type GetValueType (Packed n a) = [a]
-  getValue = unPackedList . unPackedField . unTagged
-  putValue = Tagged . PackedField . PackedList
+  -- | Wrap it back up again.
+  putField :: FieldType a -> a
 
-instance GetValue' (Packed' n a) where
-  type GetValueType' (Packed' n a) = [a]
-  getValue' = getValue
-  putValue' = putValue
+  -- | An isomorphism lens compatible with the lens package
+  field :: Functor f => (FieldType a -> f (FieldType a)) -> a -> f a
+  field f = fmap putField . f . getField
 
+instance HasField (Field n (RequiredField (Value (Last a)))) where
+  type FieldType (Field n (RequiredField (Value (Last a)))) = a
+  getField = fromMaybe (error "blah") . getLast . runValue . runRequired . runField
+  putField = Field . Required . Value . Last . Just
 
--- | An 'Identity' lens on an 'Required' field.
-instance GetValue (Required n a) where
-  type GetValueType (Required n a) = a
-  getValue = runIdentity . unTagged
-  putValue = Tagged . Identity
+instance HasField (Field n (RequiredField (Enumeration (Last a)))) where
+  type FieldType (Field n (RequiredField (Enumeration (Last a)))) = a
+  getField = fromMaybe (error "blahxz") . getLast . runEnumeration . runRequired . runField
+  putField = Field . Required . Enumeration . Last . Just
 
-instance GetValue' (Required' n a) where
-  type GetValueType' (Required' n a) = a
-  getValue' = fromMaybe (error "Required' getValue") . getLast . getValue
-  putValue' = putValue . Last . Just
+instance HasField (Field n (OptionalField (Value (Last a)))) where
+  type FieldType (Field n (OptionalField (Value (Last a)))) = Maybe a
+  getField = getLast . runValue . runOptional . runField
+  putField = Field . Optional . Value . Last
+
+instance HasField (Field n (OptionalField (Enumeration (Last a)))) where
+  type FieldType (Field n (OptionalField (Enumeration (Last a)))) = Maybe a
+  getField = getLast . runEnumeration . runOptional . runField
+  putField = Field . Optional . Enumeration . Last
+
+instance HasField (Field n (RepeatedField [Value a])) where
+  type FieldType (Field n (RepeatedField [Value a])) = [a]
+  getField = fmap runValue . runRepeated . runField
+  putField = Field . Repeated . fmap Value
+
+instance HasField (Field n (RepeatedField [Enumeration a])) where
+  type FieldType (Field n (RepeatedField [Enumeration a])) = [a]
+  getField = fmap runEnumeration . runRepeated . runField
+  putField = Field . Repeated . fmap Enumeration
+
+instance HasField (Field n (PackedField (PackedList (Value a)))) where
+  type FieldType (Field n (PackedField (PackedList (Value a)))) = [a]
+  getField = fmap runValue . unPackedList . runPackedField . runField
+  putField = Field . PackedField . PackedList . fmap Value
+
+instance HasField (Field n (PackedField (PackedList (Enumeration a)))) where
+  type FieldType (Field n (PackedField (PackedList (Enumeration a)))) = [a]
+  getField = fmap runEnumeration . unPackedList . runPackedField . runField
+  putField = Field . PackedField . PackedList . fmap Enumeration
+
+-- | Optional fields. Values that are not found will return 'Nothing'.
+-- type Optional n (f a) = Field n (OptionalField (f (Last a)))
+type family Optional (n :: *) (a :: *) :: *
+type instance Optional n (Value a)       = Field n (OptionalField (Value (Last a)))
+type instance Optional n (Enumeration a) = Field n (OptionalField (Enumeration (Last a)))
+
+-- | Required fields. Parsing will return 'Control.Alternative.empty' if a 'Required' value is not found while decoding.
+type family Required (n :: *) (a :: *) :: *
+type instance Required n (Value a)       = Field n (RequiredField (Value (Last a)))
+type instance Required n (Enumeration a) = Field n (RequiredField (Enumeration (Last a)))
+
+-- | Lists of values.
+type Repeated n a = Field n (RepeatedField [a])
+
+-- | Packed values.
+type Packed n a = Field n (PackedField (PackedList a))
 
 -- |
 -- A newtype wrapper used to distinguish 'Prelude.Enum's from other field types.
 -- 'Enumeration' fields use 'Prelude.fromEnum' and 'Prelude.toEnum' when encoding and decoding messages.
-newtype Enumeration a = Enumeration a
+newtype Enumeration a = Enumeration {runEnumeration :: a}
   deriving (Bounded, Eq, Enum, Foldable, Functor, Ord, NFData, Show, Traversable, Typeable)
-
-instance Show a => Show (Enumeration (Identity a)) where
-  show (Enumeration (Identity a)) = "Enumeration " ++ show a
-
-instance Show a => Show (Enumeration (Maybe a)) where
-  show (Enumeration a) = "Enumeration " ++ show a
-
-instance Show a => Show (Enumeration [a]) where
-  show (Enumeration a) = "Enumeration " ++ show a
-
-instance Monoid (Enumeration (Identity a)) where
-  -- error case is handled by getEnum but we're exposing the instance :-(
-  -- really should be a Semigroup instance... if we want a semigroup dependency
-  mempty = error "Empty Enumeration"
-  _ `mappend` x = x
-
-instance Monoid (Enumeration (Maybe a)) where
-  mempty = Enumeration Nothing
-  _ `mappend` x = x
-
-instance Monoid (Enumeration [a]) where
-  mempty = Enumeration []
-  Enumeration x `mappend` Enumeration y = Enumeration (x <> y)
-
--- | Similar to 'GetValue' but specialized for 'Enumeration' to avoid overlap.
-class GetEnum a where
-  type GetEnumResult a :: *
-  getEnum :: a -> GetEnumResult a
-  putEnum :: GetEnumResult a -> a
-
-  -- | An isomorphism lens compatible with the lens package
-  enum :: Functor f => (GetEnumResult a -> f (GetEnumResult a)) -> a -> f a
-  enum f = fmap putEnum . f . getEnum
-
-instance GetEnum (Enumeration a) where
-  type GetEnumResult (Enumeration a) = a
-  getEnum (Enumeration x) = x
-  putEnum = Enumeration
-
-instance Enum a => GetEnum (Identity a) where
-  type GetEnumResult (Identity a) = a
-  getEnum = runIdentity
-  putEnum = Identity
-
-instance Enum a => GetEnum (Optional n (Enumeration (Maybe a))) where
-  type GetEnumResult (Tagged n (Optionally (Enumeration (Maybe a)))) = Maybe a
-  getEnum = getEnum . runOptionally . unTagged
-  putEnum = Tagged . Optionally . putEnum
-
-instance Enum a => GetEnum (Required n (Enumeration (Identity a))) where
-  type GetEnumResult (Tagged n (Identity (Enumeration (Identity a)))) = a
-  getEnum = runIdentity . getEnum . runIdentity . unTagged
-  putEnum = Tagged . Identity . Enumeration . Identity
-
-instance Enum a => GetEnum (Repeated n (Enumeration [a])) where
-  type GetEnumResult (Tagged n [Enumeration [a]]) = [a]
-  getEnum = Fold.concatMap getEnum . unTagged
-  putEnum = Tagged . (:[]) . Enumeration
 
 -- |
 -- A traversable functor used to select packed sequence encoding/decoding.
-newtype PackedField a = PackedField {unPackedField :: a}
+newtype PackedField a = PackedField {runPackedField :: a}
   deriving (Eq, Foldable, Functor, Monoid, NFData, Ord, Show, Traversable, Typeable)
 
 -- |

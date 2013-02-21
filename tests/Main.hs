@@ -5,7 +5,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 import Test.Framework (Test, defaultMain, testGroup)
 import Test.Framework.Providers.HUnit
@@ -33,7 +35,6 @@ import Data.List
 import Data.Monoid
 import Data.Serialize (runGet, runPut)
 import Data.Proxy
-import Data.Tagged
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Typeable
@@ -80,19 +81,19 @@ primitiveWireTests = primitiveTests prop_wire
 
 packedWireTests :: [Test]
 packedWireTests =
-  [ testProperty "int32"    (prop_wire (Proxy :: Proxy (PackedList Int32)))
-  , testProperty "int64"    (prop_wire (Proxy :: Proxy (PackedList Int64)))
-  , testProperty "word32"   (prop_wire (Proxy :: Proxy (PackedList Word32)))
-  , testProperty "word64"   (prop_wire (Proxy :: Proxy (PackedList Word64)))
-  , testProperty "sint32"   (prop_wire (Proxy :: Proxy (PackedList (Signed Int32))))
-  , testProperty "sint64"   (prop_wire (Proxy :: Proxy (PackedList (Signed Int64))))
-  , testProperty "fixed32"  (prop_wire (Proxy :: Proxy (PackedList (Pb.Fixed Word32))))
-  , testProperty "fixed64"  (prop_wire (Proxy :: Proxy (PackedList (Pb.Fixed Word64))))
-  , testProperty "sfixed32" (prop_wire (Proxy :: Proxy (PackedList (Pb.Fixed Int32))))
-  , testProperty "sfixed64" (prop_wire (Proxy :: Proxy (PackedList (Pb.Fixed Int64))))
-  , testProperty "float"    (prop_wire (Proxy :: Proxy (PackedList Float)))
-  , testProperty "double"   (prop_wire (Proxy :: Proxy (PackedList Double)))
-  , testProperty "bool"     (prop_wire (Proxy :: Proxy (PackedList Bool)))
+  [ testProperty "int32"    (prop_wire (Proxy :: Proxy (PackedList (Value Int32))))
+  , testProperty "int64"    (prop_wire (Proxy :: Proxy (PackedList (Value Int64))))
+  , testProperty "word32"   (prop_wire (Proxy :: Proxy (PackedList (Value Word32))))
+  , testProperty "word64"   (prop_wire (Proxy :: Proxy (PackedList (Value Word64))))
+  , testProperty "sint32"   (prop_wire (Proxy :: Proxy (PackedList (Value (Signed Int32)))))
+  , testProperty "sint64"   (prop_wire (Proxy :: Proxy (PackedList (Value (Signed Int64)))))
+  , testProperty "fixed32"  (prop_wire (Proxy :: Proxy (PackedList (Value (Pb.Fixed Word32)))))
+  , testProperty "fixed64"  (prop_wire (Proxy :: Proxy (PackedList (Value (Pb.Fixed Word64)))))
+  , testProperty "sfixed32" (prop_wire (Proxy :: Proxy (PackedList (Value (Pb.Fixed Int32)))))
+  , testProperty "sfixed64" (prop_wire (Proxy :: Proxy (PackedList (Value (Pb.Fixed Int64)))))
+  , testProperty "float"    (prop_wire (Proxy :: Proxy (PackedList (Value Float))))
+  , testProperty "double"   (prop_wire (Proxy :: Proxy (PackedList (Value Double))))
+  , testProperty "bool"     (prop_wire (Proxy :: Proxy (PackedList (Value Bool))))
   ]
 
 requiredSingleValueTests :: [Test]
@@ -104,17 +105,17 @@ optionalSingleValueTests = primitiveTests prop_opt
 tagsOutOfRangeTests :: [Test]
 tagsOutOfRangeTests = primitiveTests prop_req_out_of_range
 
-instance Arbitrary a => Arbitrary (Required n a) where
-  arbitrary = putValue <$> arbitrary
-  shrink = fmap putValue . shrink . getValue
+instance Arbitrary a => Arbitrary (Field n (RequiredField (Value (Last a)))) where
+  arbitrary = putField <$> arbitrary
+  shrink = fmap putField . shrink . getField
 
-instance Arbitrary a => Arbitrary (Optional n a) where
-  arbitrary = putValue <$> arbitrary
-  shrink = fmap putValue . shrink . getValue
+instance Arbitrary a => Arbitrary (Field n (OptionalField (Value (Last a)))) where
+  arbitrary = putField <$> arbitrary
+  shrink = fmap putField . shrink . getField
 
-instance Arbitrary a => Arbitrary (Repeated n a) where
-  arbitrary = putValue <$> listOf1 arbitrary
-  shrink = fmap putValue . shrink . getValue
+instance Arbitrary a => Arbitrary (Field n (RepeatedField [Value a])) where
+  arbitrary = putField <$> listOf1 arbitrary
+  shrink = fmap putField . shrink . getField
 
 instance Arbitrary a => Arbitrary (PackedList a) where
   arbitrary = PackedList <$> listOf1 arbitrary
@@ -124,11 +125,15 @@ instance Arbitrary a => Arbitrary (Signed a) where
   arbitrary = Signed <$> arbitrary
   shrink (Signed x) = fmap Signed $ shrink x
 
+instance Arbitrary a => Arbitrary (Value a) where
+  arbitrary = Value <$> arbitrary
+  shrink (Value x) = fmap Value $ shrink x
+
 instance Arbitrary a => Arbitrary (Pb.Fixed a) where
   arbitrary = Pb.Fixed <$> arbitrary
   shrink (Pb.Fixed x) = fmap Pb.Fixed $ shrink x
 
-instance Arbitrary Field where
+instance Arbitrary WireField where
   arbitrary = do
     tag <- choose (0, 536870912)
     oneof
@@ -143,13 +148,13 @@ instance Arbitrary Field where
   shrink (DelimitedField t v) = DelimitedField <$> shrink t <*> fmap B.pack (shrink (B.unpack v))
   shrink (Fixed32Field t v)   = Fixed32Field   <$> shrink t <*> shrink v
 
-data RequiredValue n a = RequiredValue (Required n (Last a))
+newtype RequiredValue n a = RequiredValue (Required n (Value a))
   deriving (Eq, Generic)
 
 instance (EncodeWire a, Nat n) => Encode (RequiredValue n a)
 instance (DecodeWire a, Nat n) => Decode (RequiredValue n a)
 
-data OptionalValue n a = OptionalValue (Optional n (Last a))
+newtype OptionalValue n a = OptionalValue (Optional n (Value a))
   deriving (Eq, Generic)
 
 instance (EncodeWire a, Nat n) => Encode (OptionalValue n a)
@@ -161,8 +166,8 @@ prop_wire _ = label ("prop_wire :: " ++ show (typeOf (undefined :: a))) $ do
   val <- arbitrary
   let bs = runPut (encodeWire tag (val :: a))
       dec = do
-        field <- getField
-        guard $ tag == fieldTag field
+        field <- getWireField
+        guard $ tag == wireFieldTag field
         decodeWire field
   case runGet dec bs of
     Right val' -> return $ val == val'
@@ -170,13 +175,13 @@ prop_wire _ = label ("prop_wire :: " ++ show (typeOf (undefined :: a))) $ do
 
 prop_generic :: Property
 prop_generic = do
-  msg <- HashMap.fromListWith (++) . fmap (\ c -> (fieldTag c, [c])) <$> listOf1 arbitrary
+  msg <- HashMap.fromListWith (++) . fmap (\ c -> (wireFieldTag c, [c])) <$> listOf1 arbitrary
   prop_roundtrip msg
 
 prop_generic_length_prefixed :: Property
 prop_generic_length_prefixed = do
-  msg <- HashMap.fromListWith (++) . fmap (\ c -> (fieldTag c, [c])) <$> listOf1 arbitrary
-  let bs = runPut $ encodeLengthPrefixedMessage (msg :: HashMap Tag [Field])
+  msg <- HashMap.fromListWith (++) . fmap (\ c -> (wireFieldTag c, [c])) <$> listOf1 arbitrary
+  let bs = runPut $ encodeLengthPrefixedMessage (msg :: HashMap Tag [WireField])
   case runGet decodeLengthPrefixedMessage bs of
     Right msg' -> printTestCase "foo" $ msg == msg'
     Left err   -> fail err
@@ -195,10 +200,10 @@ prop_encode_fail msg = morallyDubiousIOProperty $ do
     Left  _ -> True
     Right _ -> False
 
-prop_req_reify_out_of_range :: forall a r . Last a -> (forall n . Nat n => RequiredValue n a -> Gen r) -> Gen r
+prop_req_reify_out_of_range :: forall a r . a -> (forall n . Nat n => RequiredValue n a -> Gen r) -> Gen r
 prop_req_reify_out_of_range a f = do
   let g :: forall n . Nat n => n -> Gen r
-      g _ = f (RequiredValue (putValue a) :: RequiredValue n a)
+      g _ = f (RequiredValue (putField a) :: RequiredValue n a)
   -- according to https://developers.google.com/protocol-buffers/docs/proto
   -- the max is 2^^29 - 1, or 536,870,911.
   --
@@ -208,10 +213,10 @@ prop_req_reify_out_of_range a f = do
   n <- choose (536870912, maxBound)
   reifyIntegral (n :: Int32) g
 
-prop_req_reify :: forall a r . Last a -> (forall n . Nat n => RequiredValue n a -> Gen r) -> Gen r
+prop_req_reify :: forall a r . a -> (forall n . Nat n => RequiredValue n a -> Gen r) -> Gen r
 prop_req_reify a f = do
   let g :: forall n . Nat n => n -> Gen r
-      g _ = f (RequiredValue (putValue a) :: RequiredValue n a)
+      g _ = f (RequiredValue (putField a) :: RequiredValue n a)
   -- according to https://developers.google.com/protocol-buffers/docs/proto
   -- the max is 2^^29 - 1, or 536,870,911.
   --
@@ -223,18 +228,18 @@ prop_req_reify a f = do
 
 prop_req_out_of_range :: forall a . (Arbitrary a, EncodeWire a) => Proxy a -> Property
 prop_req_out_of_range _ = do
-  val <- Last . Just <$> arbitrary
-  prop_req_reify_out_of_range (val :: Last a) prop_encode_fail
+  val <- Just <$> arbitrary
+  prop_req_reify_out_of_range (val :: Maybe a) prop_encode_fail
 
 prop_req :: forall a . (Arbitrary a, Eq a, EncodeWire a, DecodeWire a, Typeable a) => Proxy a -> Property
 prop_req _ = label ("prop_req :: " ++ show (typeOf (undefined :: a))) $ do
-  val <- Last . Just <$> arbitrary
-  prop_req_reify (val :: Last a) prop_roundtrip
+  val <- Just <$> arbitrary
+  prop_req_reify (val :: Maybe a) prop_roundtrip
 
-prop_opt_reify :: forall a r . Last a -> (forall n . Nat n => OptionalValue n a -> Gen r) -> Gen r
+prop_opt_reify :: forall a r . Maybe a -> (forall n . Nat n => OptionalValue n a -> Gen r) -> Gen r
 prop_opt_reify a f = do
   let g :: forall n . Nat n => n -> Gen r
-      g _ = f (OptionalValue (putValue a) :: OptionalValue n a)
+      g _ = f (OptionalValue (putField a) :: OptionalValue n a)
   -- according to https://developers.google.com/protocol-buffers/docs/proto
   -- the max is 2^^29 - 1, or 536,870,911.
   --
@@ -246,8 +251,8 @@ prop_opt_reify a f = do
 
 prop_opt :: forall a . (Arbitrary a, Eq a, EncodeWire a, DecodeWire a, Typeable a) => Proxy a -> Property
 prop_opt _ = label ("prop_opt :: " ++ show (typeOf (undefined :: a))) $ do
-  val <- Last <$> arbitrary
-  prop_opt_reify (val :: Last a) prop_roundtrip
+  val <- arbitrary
+  prop_opt_reify (val :: Maybe a) prop_roundtrip
 
 -- implement the examples from https://developers.google.com/protocol-buffers/docs/encoding
 testSpecific msg ref = do
@@ -258,21 +263,25 @@ testSpecific msg ref = do
     Right msg' -> assertEqual "Decoded message mismatch" msg msg'
     Left err   -> assertFailure err
 
-data Test1 = Test1{test1_a :: Required' D1 Int32} deriving (Generic, Eq, Show)
+data Test1 = Test1{test1_a :: Required D1 (Value Int32)} deriving (Generic)
+deriving instance Eq Test1
+deriving instance Show Test1
 instance Encode Test1
 instance Decode Test1
 
 test1 :: Assertion
 test1 = testSpecific msg =<< unhex "089601" where
-  msg = Test1{test1_a = putValue' 150}
+  msg = Test1{test1_a = putField 150}
 
-data Test2 = Test2{test2_b :: Required D2 Text} deriving (Generic, Eq, Show)
+data Test2 = Test2{test2_b :: Required D2 (Value Text)} deriving (Generic)
+deriving instance Eq Test2
+deriving instance Show Test2
 instance Encode Test2
 instance Decode Test2
 
 test2 :: Assertion
 test2 = testSpecific msg =<< unhex "120774657374696e67" where
-  msg = Test2{test2_b = putValue "testing"}
+  msg = Test2{test2_b = putField "testing"}
 
 data Test3 = Test3{test3_c :: Required D3 (Message Test1)} deriving (Generic, Eq, Show)
 instance Encode Test3
@@ -280,15 +289,15 @@ instance Decode Test3
 
 test3 :: Assertion
 test3 = testSpecific msg =<< unhex "1a03089601" where
-  msg = Test3{test3_c = putValue (Message (Just Test1{test1_a = putValue' 150}))}
+  msg = Test3{test3_c = putField Test1{test1_a = putField 150}}
 
-data Test4 = Test4{test4_d :: Packed D4 Word32} deriving (Generic, Eq, Show)
+data Test4 = Test4{test4_d :: Packed D4 (Value Word32)} deriving (Generic, Eq, Show)
 instance Encode Test4
 instance Decode Test4
 
 test4 :: Assertion
 test4 = testSpecific msg =<< unhex "2206038e029ea705" where
-  msg = Test4{test4_d = putValue [3,270,86942]}
+  msg = Test4{test4_d = putField [3,270,86942]}
 
 -- some from http://code.google.com/p/protobuf/source/browse/trunk/src/google/protobuf/wire_format_unittest.cc
 wireFormatZZ :: Assertion

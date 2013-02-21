@@ -42,7 +42,6 @@ library
     ghc-prim,
     mtl,
     -- pretty,
-    tagged,
     text,
     type-level,
     unordered-containers

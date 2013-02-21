@@ -14,7 +14,6 @@ module Data.ProtocolBuffers.Decode
 
 import Control.Applicative
 import Control.Monad
-import Control.Monad.Identity
 import qualified Data.ByteString as B
 import Data.Foldable
 import Data.HashMap.Strict (HashMap)
@@ -22,8 +21,6 @@ import qualified Data.HashMap.Strict as HashMap
 import Data.Int (Int64)
 import Data.Monoid
 import Data.Serialize.Get
-import Data.Tagged
-import Data.Traversable
 import qualified Data.TypeLevel as Tl
 
 import GHC.Generics
@@ -36,10 +33,11 @@ import Data.ProtocolBuffers.Wire
 decodeMessage :: Decode a => Get a
 {-# INLINE decodeMessage #-}
 decodeMessage = decode =<< go HashMap.empty where
+  go :: HashMap Tag [WireField] -> Get (HashMap Tag [WireField])
   go msg = do
-    mfield <- Just <$> getField <|> return Nothing
+    mfield <- Just <$> getWireField <|> return Nothing
     case mfield of
-      Just v  -> go $! HashMap.insertWith (flip (++)) (fieldTag v) [v] msg
+      Just v  -> go $! HashMap.insertWith (flip (++)) (wireFieldTag v) [v] msg
       Nothing -> return msg
 
 -- |
@@ -56,16 +54,16 @@ decodeLengthPrefixedMessage = do
     Left err  -> fail err
 
 class Decode (a :: *) where
-  decode :: HashMap Tag [Field] -> Get a
-  default decode :: (Generic a, GDecode (Rep a)) => HashMap Tag [Field] -> Get a
+  decode :: HashMap Tag [WireField] -> Get a
+  default decode :: (Generic a, GDecode (Rep a)) => HashMap Tag [WireField] -> Get a
   decode = fmap to . gdecode
 
 -- | Untyped message decoding, @ 'decode' = 'id' @
-instance Decode (HashMap Tag [Field]) where
+instance Decode (HashMap Tag [WireField]) where
   decode = pure
 
 class GDecode (f :: * -> *) where
-  gdecode :: HashMap Tag [Field] -> Get (f a)
+  gdecode :: HashMap Tag [WireField] -> Get (f a)
 
 instance GDecode a => GDecode (M1 i c a) where
   gdecode = fmap M1 . gdecode
@@ -76,33 +74,29 @@ instance (GDecode a, GDecode b) => GDecode (a :*: b) where
 instance (GDecode x, GDecode y) => GDecode (x :+: y) where
   gdecode msg = L1 <$> gdecode msg <|> R1 <$> gdecode msg
 
-instance (DecodeWire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Optional n a)) where
-  gdecode msg =
-    let tag = fromIntegral $ Tl.toInt (undefined :: n)
-    in case HashMap.lookup tag msg of
-      Just val -> K1 . Tagged <$> foldMapM decodeWire val
-      Nothing  -> pure $ K1 mempty
+fieldDecode
+  :: forall a b i n p . (DecodeWire a, Monoid a, Tl.Nat n)
+  => (a -> b)
+  -> HashMap Tag [WireField]
+  -> Get (K1 i (Field n b) p)
+{-# INLINE fieldDecode #-}
+fieldDecode c msg =
+  let tag = fromIntegral $ Tl.toInt (undefined :: n)
+  in case HashMap.lookup tag msg of
+    Just val -> K1 . Field . c <$> foldMapM decodeWire val
+    Nothing  -> empty
 
-instance (DecodeWire a, Tl.Nat n) => GDecode (K1 i (Repeated n a)) where
-  gdecode msg =
-    let tag = fromIntegral $ Tl.toInt (undefined :: n)
-    in case HashMap.lookup tag msg of
-      Just val -> K1 . Tagged <$> traverse decodeWire val
-      Nothing  -> pure $ K1 mempty
+instance (DecodeWire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Field n (OptionalField a))) where
+  gdecode msg = fieldDecode Optional msg <|> pure (K1 mempty)
 
-instance (DecodeWire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Required n a)) where
-  gdecode msg =
-    let tag = fromIntegral $ Tl.toInt (undefined :: n)
-    in case HashMap.lookup tag msg of
-      Just val -> K1 . Tagged . Identity <$> foldMapM decodeWire val
-      Nothing  -> empty
+instance (DecodeWire [a], Tl.Nat n) => GDecode (K1 i (Repeated n a)) where
+  gdecode msg = fieldDecode Repeated msg <|> pure (K1 mempty)
+
+instance (DecodeWire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Field n (RequiredField a))) where
+  gdecode msg = fieldDecode Required msg
 
 instance (DecodeWire (PackedList a), Tl.Nat n) => GDecode (K1 i (Packed n a)) where
-  gdecode msg =
-    let tag = fromIntegral $ Tl.toInt (undefined :: n)
-    in case HashMap.lookup tag msg of
-      Just val -> K1 . Tagged . PackedField <$> foldMapM decodeWire val
-      Nothing  -> empty
+  gdecode msg = fieldDecode PackedField msg
 
 foldMapM :: (Monad m, Foldable t, Monoid b) => (a -> m b) -> t a -> m b
 foldMapM f = foldlM go mempty where

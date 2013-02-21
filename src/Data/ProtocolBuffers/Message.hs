@@ -1,24 +1,27 @@
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Data.ProtocolBuffers.Message
   ( Message(..)
-  , GetMessage(..)
   ) where
 
 import Control.Applicative
 import Control.DeepSeq (NFData)
 import Data.Foldable
-import Data.Maybe (fromMaybe)
 import Data.Monoid
 import Data.Serialize.Get
 import Data.Serialize.Put
 import Data.Traversable
+
+import GHC.Generics
 
 import Data.ProtocolBuffers.Decode
 import Data.ProtocolBuffers.Encode
@@ -47,49 +50,49 @@ import Data.ProtocolBuffers.Wire
 --instance 'Decode' Outer
 -- @
 --
-newtype Message m = Message {runMessage :: Maybe m}
+newtype Message m = Message {runMessage :: m}
   deriving (Eq, Foldable, Functor, NFData, Ord, Show, Traversable)
 
-instance Monoid (Message m) where
-  mempty = Message Nothing
-  _ `mappend` m = m
+instance (Generic m, GMessageMonoid (Rep m)) => Monoid (Message m) where
+  mempty = Message . to $ gmempty
+  Message x `mappend` Message y = Message . to $ gmappend (from x) (from y)
 
-instance Applicative Message where
-  pure = Message . Just
-  Message (Just f) <*> x = f <$> x
-  Message Nothing  <*> _ = Message Nothing
+class GMessageMonoid (f :: * -> *) where
+  gmempty :: f a
+  gmappend :: f a -> f a -> f a
 
-instance Monad Message where
-  return = pure
-  Message (Just f) >>= x = x f
-  Message Nothing  >>= _ = Message Nothing
+instance GMessageMonoid f => GMessageMonoid (M1 i c f) where
+  gmempty = M1 $ gmempty
+  gmappend (M1 x) (M1 y) = M1 (gmappend x y)
+
+instance (GMessageMonoid x, GMessageMonoid y) => GMessageMonoid (x :*: y) where
+  gmempty = gmempty :*: gmempty
+  gmappend (x1 :*: x2) (y1 :*: y2) = gmappend x1 y1 :*: gmappend x2 y2
+
+instance (Monoid c) => GMessageMonoid (K1 i c) where
+  gmempty = K1 mempty
+  gmappend (K1 x) (K1 y) = K1 $ mappend x y
+
+type instance Optional n (Message a) = Field n (OptionalField (Message (Maybe a)))
+type instance Required n (Message a) = Field n (RequiredField (Message a))
 
 instance Encode m => EncodeWire (Message m) where
-  encodeWire t (Message m) =
-    traverse_ (encodeWire t . runPut . encode) m
+  encodeWire t =
+    encodeWire t . runPut . encode . runMessage
 
 instance Decode m => DecodeWire (Message m) where
   decodeWire (DelimitedField _ bs) =
     case runGet decodeMessage bs of
-      Right val -> pure . Message $ Just val
+      Right val -> pure $ Message val
       Left err  -> fail $ "Embedded message decoding failed: " ++ show err
   decodeWire _ = empty
 
+instance HasField (Field n (RequiredField (Message a))) where
+  type FieldType (Field n (RequiredField (Message a))) = a
+  getField = runMessage . runRequired . runField
+  putField = Field . Required . Message
 
--- | Functions for wrapping and unwrapping record fields that use the 'Message' type
-class GetMessage a where
-  type GetMessageType a :: *
-  getMessage :: a -> GetMessageType a
-  putMessage :: GetMessageType a -> a
-  message :: Functor f => (GetMessageType a -> f (GetMessageType a)) -> a -> f a
-  message f = fmap putMessage . f . getMessage
-
-instance GetMessage (Required n (Message a)) where
-  type GetMessageType (Required n (Message a)) = a
-  getMessage = fromMaybe (error "Required' getValue") . runMessage . getValue
-  putMessage = putValue . Message . Just
-
-instance GetMessage (Optional n (Message a)) where
-  type GetMessageType (Optional n (Message a)) = Maybe a
-  getMessage = runMessage . getValue
-  putMessage = putValue . Message
+instance HasField (Field n (OptionalField (Message (Maybe a)))) where
+  type FieldType (Field n (OptionalField (Message (Maybe a)))) = Maybe a
+  getField = runMessage . runOptional . runField
+  putField = Field . Optional . Message

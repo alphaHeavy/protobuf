@@ -69,31 +69,19 @@ module Data.ProtocolBuffers
 
     -- * Value Accessors
     --
-  , GetValue(..)
-  , GetEnum(..)
-
-    -- * Simple Field Tags
-    -- |
-    --
-    -- Fields that default to the 'Data.Monoid.Last' 'Data.Monoid.Monoid' when merging duplicates
-    --
-  , Required'
-  , Optional'
-  -- , Repeated'
-  -- , Packed'
-
-    -- * Simple Value Accessors
-    --
-  , GetValue'(..)
-  , GetMessage(..)
+  , Field
+  , HasField(..)
 
     -- * Value Selectors
     --
+  , Value
   , Enumeration
+  , RequiredField(..)
+  , OptionalField(..)
+  , RepeatedField(..)
   , PackedField(..)
   , PackedList(..)
-  , Message(..)
-  , Optionally
+  , Message
   , Signed(..)
   , Fixed(..)
   ) where
