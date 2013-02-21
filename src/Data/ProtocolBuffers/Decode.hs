@@ -122,4 +122,4 @@ instance (DecodeWire (PackedList a), Tl.Nat n) => GDecode (K1 i (Packed n a)) wh
 
 foldMapM :: (Monad m, Foldable t, Monoid b) => (a -> m b) -> t a -> m b
 foldMapM f = foldlM go mempty where
-  go !acc el = mappend acc `liftM` f el
+  go acc el = mappend acc `liftM` f el
