@@ -20,6 +20,7 @@ import Data.Monoid
 import Data.Serialize.Get
 import Data.Serialize.Put
 import Data.Traversable
+import qualified Data.TypeLevel as Tl
 
 import GHC.Generics
 
@@ -56,6 +57,12 @@ newtype Message m = Message {runMessage :: m}
 instance (Generic m, GMessageMonoid (Rep m)) => Monoid (Message m) where
   mempty = Message . to $ gmempty
   Message x `mappend` Message y = Message . to $ gmappend (from x) (from y)
+
+instance (Decode a, Monoid (Message a), Tl.Nat n) => GDecode (K1 i (Field n (RequiredField (Always (Message a))))) where
+  gdecode msg = fieldDecode (Required . Always) msg
+
+instance (Decode a, Monoid (Message a), Tl.Nat n) => GDecode (K1 i (Field n (OptionalField (Maybe (Message a))))) where
+  gdecode msg = fieldDecode (Optional . Just) msg <|> pure (K1 mempty)
 
 class GMessageMonoid (f :: * -> *) where
   gmempty :: f a
@@ -103,14 +110,10 @@ instance NFData c => GMessageNFData (K1 i c) where
 instance GMessageNFData U1 where
   grnf U1 = ()
 
-type instance Optional n (Message a) = Field n (OptionalField (Message (Maybe a)))
-type instance Required n (Message a) = Field n (RequiredField (Message a))
+type instance Optional n (Message a) = Field n (OptionalField (Maybe (Message a)))
+type instance Required n (Message a) = Field n (RequiredField (Always (Message a)))
 
-instance Encode m => EncodeWire (Message m) where
-  encodeWire t =
-    encodeWire t . runPut . encode . runMessage
-
-instance Encode m => EncodeWire [Message m] where
+instance (Foldable f, Encode m) => EncodeWire (f (Message m)) where
   encodeWire t =
     traverse_ (encodeWire t . runPut . encode . runMessage)
 
@@ -121,15 +124,15 @@ instance Decode m => DecodeWire (Message m) where
       Left err  -> fail $ "Embedded message decoding failed: " ++ show err
   decodeWire _ = empty
 
-instance HasField (Field n (RequiredField (Message a))) where
-  type FieldType (Field n (RequiredField (Message a))) = a
-  getField = runMessage . runRequired . runField
-  putField = Field . Required . Message
+instance HasField (Field n (RequiredField (Always (Message a)))) where
+  type FieldType (Field n (RequiredField (Always (Message a)))) = a
+  getField = runMessage . runAlways. runRequired . runField
+  putField = Field . Required . Always . Message
 
-instance HasField (Field n (OptionalField (Message (Maybe a)))) where
-  type FieldType (Field n (OptionalField (Message (Maybe a)))) = Maybe a
-  getField = runMessage . runOptional . runField
-  putField = Field . Optional . Message
+instance HasField (Field n (OptionalField (Maybe (Message a)))) where
+  type FieldType (Field n (OptionalField (Maybe (Message a)))) = Maybe a
+  getField = fmap runMessage . runOptional . runField
+  putField = Field . Optional . fmap Message
 
 instance HasField (Field n (RepeatedField [Message a])) where
   type FieldType (Field n (RepeatedField [Message a])) = [a]

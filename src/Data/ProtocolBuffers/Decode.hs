@@ -10,6 +10,8 @@ module Data.ProtocolBuffers.Decode
   ( Decode(..)
   , decodeMessage
   , decodeLengthPrefixedMessage
+  , GDecode(..)
+  , fieldDecode
   ) where
 
 import Control.Applicative
@@ -18,7 +20,7 @@ import qualified Data.ByteString as B
 import Data.Foldable
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
-import Data.Int (Int64)
+import Data.Int (Int32, Int64)
 import Data.Monoid
 import Data.Serialize.Get
 import Data.Traversable (traverse)
@@ -87,8 +89,23 @@ fieldDecode c msg =
     Just val -> K1 . Field . c <$> foldMapM decodeWire val
     Nothing  -> empty
 
-instance (DecodeWire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Field n (OptionalField a))) where
+instance (DecodeWire a, Tl.Nat n) => GDecode (K1 i (Field n (OptionalField (Last (Value a))))) where
   gdecode msg = fieldDecode Optional msg <|> pure (K1 mempty)
+
+instance (Enum a, Tl.Nat n) => GDecode (K1 i (Field n (RequiredField (Always (Enumeration a))))) where
+  gdecode msg = do
+    K1 mx <- fieldDecode Required msg
+    case mx :: Field n (RequiredField (Always (Value Int32))) of
+      Field (Required (Always (Value x))) ->
+        return . K1 . Field . Required . Always . Enumeration . toEnum $ fromIntegral x
+
+instance (Enum a, Tl.Nat n) => GDecode (K1 i (Field n (OptionalField (Last (Enumeration a))))) where
+  gdecode msg = do
+    K1 mx <- fieldDecode Optional msg
+    case mx :: Field n (OptionalField (Last (Value Int32))) of
+      Field (Optional (Last (Just (Value x)))) ->
+        return . K1 . Field . Optional . Last . Just . Enumeration . toEnum $ fromIntegral x
+      _ -> pure (K1 mempty)
 
 instance (DecodeWire a, Tl.Nat n) => GDecode (K1 i (Repeated n a)) where
   gdecode msg =
@@ -97,7 +114,7 @@ instance (DecodeWire a, Tl.Nat n) => GDecode (K1 i (Repeated n a)) where
       Just val -> K1 . Field . Repeated <$> traverse decodeWire val
       Nothing  -> pure $ K1 mempty
 
-instance (DecodeWire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Field n (RequiredField a))) where
+instance (DecodeWire a, Tl.Nat n) => GDecode (K1 i (Field n (RequiredField (Always (Value a))))) where
   gdecode msg = fieldDecode Required msg
 
 instance (DecodeWire (PackedList a), Tl.Nat n) => GDecode (K1 i (Packed n a)) where

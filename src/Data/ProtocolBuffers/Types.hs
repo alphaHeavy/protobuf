@@ -20,6 +20,7 @@ module Data.ProtocolBuffers.Types
   , Enumeration(..)
   , Fixed(..)
   , Signed(..)
+  , Always(..)
   , PackedList(..)
   , PackedField(..)
   ) where
@@ -27,7 +28,6 @@ module Data.ProtocolBuffers.Types
 import Control.DeepSeq (NFData)
 import Data.Bits
 import Data.Foldable as Fold
-import Data.Maybe (fromMaybe)
 import Data.Monoid
 import Data.Traversable
 import Data.Typeable
@@ -47,6 +47,13 @@ newtype RepeatedField a    = Repeated    {runRepeated    :: a}
 newtype Field (n :: *) a = Field {runField :: a}
   deriving (Bounded, Eq, Enum, Foldable, Functor, Monoid, Ord, NFData, Show, Traversable, Typeable)
 
+newtype Always a = Always {runAlways :: a}
+  deriving (Bounded, Eq, Enum, Foldable, Functor, Ord, NFData, Show, Traversable, Typeable)
+
+instance Monoid (Always a) where
+  mempty = error "Always is not a Monoid"
+  mappend _ y = y
+
 -- | Functions for wrapping and unwrapping record fields
 class HasField a where
   type FieldType a :: *
@@ -61,25 +68,25 @@ class HasField a where
   field :: Functor f => (FieldType a -> f (FieldType a)) -> a -> f a
   field f = fmap putField . f . getField
 
-instance HasField (Field n (RequiredField (Value (Last a)))) where
-  type FieldType (Field n (RequiredField (Value (Last a)))) = a
-  getField = fromMaybe (error "blah") . getLast . runValue . runRequired . runField
-  putField = Field . Required . Value . Last . Just
+instance HasField (Field n (RequiredField (Always (Value a)))) where
+  type FieldType (Field n (RequiredField (Always (Value a)))) = a
+  getField = runValue . runAlways . runRequired . runField
+  putField = Field . Required . Always . Value
 
-instance HasField (Field n (RequiredField (Enumeration (Last a)))) where
-  type FieldType (Field n (RequiredField (Enumeration (Last a)))) = a
-  getField = fromMaybe (error "blahxz") . getLast . runEnumeration . runRequired . runField
-  putField = Field . Required . Enumeration . Last . Just
+instance HasField (Field n (RequiredField (Always (Enumeration a)))) where
+  type FieldType (Field n (RequiredField (Always (Enumeration a)))) = a
+  getField = runEnumeration . runAlways . runRequired . runField
+  putField = Field . Required . Always . Enumeration
 
-instance HasField (Field n (OptionalField (Value (Last a)))) where
-  type FieldType (Field n (OptionalField (Value (Last a)))) = Maybe a
-  getField = getLast . runValue . runOptional . runField
-  putField = Field . Optional . Value . Last
+instance HasField (Field n (OptionalField (Last (Value a)))) where
+  type FieldType (Field n (OptionalField (Last (Value a)))) = Maybe a
+  getField = fmap runValue . getLast . runOptional . runField
+  putField = Field . Optional . Last . fmap Value
 
-instance HasField (Field n (OptionalField (Enumeration (Last a)))) where
-  type FieldType (Field n (OptionalField (Enumeration (Last a)))) = Maybe a
-  getField = getLast . runEnumeration . runOptional . runField
-  putField = Field . Optional . Enumeration . Last
+instance HasField (Field n (OptionalField (Last (Enumeration a)))) where
+  type FieldType (Field n (OptionalField (Last (Enumeration a)))) = Maybe a
+  getField = fmap runEnumeration . getLast . runOptional . runField
+  putField = Field . Optional . Last . fmap Enumeration
 
 instance HasField (Field n (RepeatedField [Value a])) where
   type FieldType (Field n (RepeatedField [Value a])) = [a]
@@ -104,13 +111,13 @@ instance HasField (Field n (PackedField (PackedList (Enumeration a)))) where
 -- | Optional fields. Values that are not found will return 'Nothing'.
 -- type Optional n (f a) = Field n (OptionalField (f (Last a)))
 type family Optional (n :: *) (a :: *) :: *
-type instance Optional n (Value a)       = Field n (OptionalField (Value (Last a)))
-type instance Optional n (Enumeration a) = Field n (OptionalField (Enumeration (Last a)))
+type instance Optional n (Value a)       = Field n (OptionalField (Last (Value a)))
+type instance Optional n (Enumeration a) = Field n (OptionalField (Last (Enumeration a)))
 
 -- | Required fields. Parsing will return 'Control.Alternative.empty' if a 'Required' value is not found while decoding.
 type family Required (n :: *) (a :: *) :: *
-type instance Required n (Value a)       = Field n (RequiredField (Value (Last a)))
-type instance Required n (Enumeration a) = Field n (RequiredField (Enumeration (Last a)))
+type instance Required n (Value a)       = Field n (RequiredField (Always (Value a)))
+type instance Required n (Enumeration a) = Field n (RequiredField (Always (Enumeration a)))
 
 -- | Lists of values.
 type Repeated n a = Field n (RepeatedField [a])
@@ -122,7 +129,7 @@ type Packed n a = Field n (PackedField (PackedList a))
 -- A newtype wrapper used to distinguish 'Prelude.Enum's from other field types.
 -- 'Enumeration' fields use 'Prelude.fromEnum' and 'Prelude.toEnum' when encoding and decoding messages.
 newtype Enumeration a = Enumeration {runEnumeration :: a}
-  deriving (Bounded, Eq, Enum, Foldable, Functor, Ord, NFData, Show, Traversable, Typeable)
+  deriving (Bounded, Eq, Enum, Foldable, Functor, Ord, Monoid, NFData, Show, Traversable, Typeable)
 
 -- |
 -- A traversable functor used to select packed sequence encoding/decoding.

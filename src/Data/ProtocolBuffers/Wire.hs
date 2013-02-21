@@ -5,7 +5,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE UndecidableInstances #-}
 
 module Data.ProtocolBuffers.Wire
   ( Enumeration(..)
@@ -136,15 +135,11 @@ class EncodeWire a where
 class DecodeWire a where
   decodeWire :: WireField -> Get a
 
-deriving instance EncodeWire a => EncodeWire (First a)
-deriving instance EncodeWire a => EncodeWire (Last a)
-deriving instance EncodeWire a => EncodeWire (Product a)
-deriving instance EncodeWire a => EncodeWire (Sum a)
+deriving instance EncodeWire a => EncodeWire (Always (Value a))
+deriving instance EncodeWire a => EncodeWire (Last (Value a))
 
-deriving instance DecodeWire a => DecodeWire (First a)
-deriving instance DecodeWire a => DecodeWire (Last a)
-deriving instance DecodeWire a => DecodeWire (Product a)
-deriving instance DecodeWire a => DecodeWire (Sum a)
+deriving instance DecodeWire a => DecodeWire (Always (Value a))
+deriving instance DecodeWire a => DecodeWire (Last (Value a))
 
 instance EncodeWire WireField where
   encodeWire t f
@@ -160,11 +155,11 @@ instance EncodeWire a => EncodeWire (Value a) where
 instance DecodeWire a => DecodeWire (Value a) where
   decodeWire = fmap Value . decodeWire
 
-instance EncodeWire a => EncodeWire (Maybe a) where
+instance EncodeWire a => EncodeWire (Maybe (Value a)) where
   encodeWire t = traverse_ (encodeWire t)
 
-instance DecodeWire a => DecodeWire (Maybe a) where
-  decodeWire = fmap Just . decodeWire
+instance DecodeWire a => DecodeWire (Maybe (Value a)) where
+  decodeWire = fmap (Just . Value) . decodeWire
 
 instance EncodeWire Int32 where
   encodeWire t val = putWireTag t 0 >> putVarSInt val
@@ -434,10 +429,15 @@ instance (Foldable f, Enum a) => EncodeWire (Enumeration (f a)) where
     c :: a -> Int32
     c = fromIntegral . fromEnum
 
-instance (HasField (Enumeration a), Enum (FieldType (Enumeration a))) => DecodeWire (Enumeration a) where
+instance Enum a => DecodeWire (Enumeration (Maybe a)) where
   decodeWire f = c <$> decodeWire f where
-    c:: Int32 -> Enumeration a
-    c = putField . toEnum . fromIntegral
+    c :: Int32 -> Enumeration (Maybe a)
+    c = Enumeration . Just . toEnum . fromIntegral
+
+instance Enum a => DecodeWire (Enumeration (Always a)) where
+  decodeWire f = c <$> decodeWire f where
+    c :: Int32 -> Enumeration (Always a)
+    c = Enumeration . Always . toEnum . fromIntegral
 
 -- Taken from google's code, but I had to explcitly add fromIntegral in the right places:
 zzEncode32 :: Int32 -> Word32

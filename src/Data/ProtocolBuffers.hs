@@ -75,6 +75,7 @@ module Data.ProtocolBuffers
     -- * Value Selectors
     --
   , Value
+  , Always
   , Enumeration
   , RequiredField(..)
   , OptionalField(..)

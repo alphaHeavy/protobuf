@@ -105,11 +105,11 @@ optionalSingleValueTests = primitiveTests prop_opt
 tagsOutOfRangeTests :: [Test]
 tagsOutOfRangeTests = primitiveTests prop_req_out_of_range
 
-instance Arbitrary a => Arbitrary (Field n (RequiredField (Value (Last a)))) where
+instance Arbitrary a => Arbitrary (Field n (RequiredField (Always (Value a)))) where
   arbitrary = putField <$> arbitrary
   shrink = fmap putField . shrink . getField
 
-instance Arbitrary a => Arbitrary (Field n (OptionalField (Value (Last a)))) where
+instance Arbitrary a => Arbitrary (Field n (OptionalField (Last (Value a)))) where
   arbitrary = putField <$> arbitrary
   shrink = fmap putField . shrink . getField
 
@@ -229,12 +229,12 @@ prop_req_reify a f = do
 prop_req_out_of_range :: forall a . (Arbitrary a, EncodeWire a) => Proxy a -> Property
 prop_req_out_of_range _ = do
   val <- Just <$> arbitrary
-  prop_req_reify_out_of_range (val :: Maybe a) prop_encode_fail
+  prop_req_reify_out_of_range (val :: Maybe (Value a)) prop_encode_fail
 
 prop_req :: forall a . (Arbitrary a, Eq a, EncodeWire a, DecodeWire a, Typeable a) => Proxy a -> Property
 prop_req _ = label ("prop_req :: " ++ show (typeOf (undefined :: a))) $ do
   val <- Just <$> arbitrary
-  prop_req_reify (val :: Maybe a) prop_roundtrip
+  prop_req_reify (val :: Maybe (Value a)) prop_roundtrip
 
 prop_opt_reify :: forall a r . Maybe a -> (forall n . Nat n => OptionalValue n a -> Gen r) -> Gen r
 prop_opt_reify a f = do
