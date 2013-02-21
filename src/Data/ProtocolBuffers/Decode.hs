@@ -21,6 +21,7 @@ import qualified Data.HashMap.Strict as HashMap
 import Data.Int (Int64)
 import Data.Monoid
 import Data.Serialize.Get
+import Data.Traversable (traverse)
 import qualified Data.TypeLevel as Tl
 
 import GHC.Generics
@@ -89,8 +90,12 @@ fieldDecode c msg =
 instance (DecodeWire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Field n (OptionalField a))) where
   gdecode msg = fieldDecode Optional msg <|> pure (K1 mempty)
 
-instance (DecodeWire [a], Tl.Nat n) => GDecode (K1 i (Repeated n a)) where
-  gdecode msg = fieldDecode Repeated msg <|> pure (K1 mempty)
+instance (DecodeWire a, Tl.Nat n) => GDecode (K1 i (Repeated n a)) where
+  gdecode msg =
+    let tag = fromIntegral $ Tl.toInt (undefined :: n)
+    in case HashMap.lookup tag msg of
+      Just val -> K1 . Field . Repeated <$> traverse decodeWire val
+      Nothing  -> pure $ K1 mempty
 
 instance (DecodeWire a, Monoid a, Tl.Nat n) => GDecode (K1 i (Field n (RequiredField a))) where
   gdecode msg = fieldDecode Required msg
