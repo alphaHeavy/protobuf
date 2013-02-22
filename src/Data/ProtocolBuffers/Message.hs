@@ -37,7 +37,7 @@ import Data.ProtocolBuffers.Wire
 --
 -- @
 --data Inner = Inner
---   { innerField :: 'Data.ProtocolBuffers.Required' 'Data.TypeLevel.D1' ('Data.Monoid.Last' 'Data.Int.Int64')
+--   { innerField :: 'Data.ProtocolBuffers.Required' 'Data.TypeLevel.D1' ('Data.ProtocolBuffers.Value' 'Data.Int.Int64')
 --   } deriving ('GHC.Generics.Generic', 'Prelude.Show')
 --
 -- instance 'Encode' Inner
@@ -124,16 +124,19 @@ instance Decode m => DecodeWire (Message m) where
       Left err  -> fail $ "Embedded message decoding failed: " ++ show err
   decodeWire _ = empty
 
+-- | Iso: @ 'FieldType' ('Required' n ['Message' a]) = a @
 instance HasField (Field n (RequiredField (Always (Message a)))) where
   type FieldType (Field n (RequiredField (Always (Message a)))) = a
   getField = runMessage . runAlways. runRequired . runField
   putField = Field . Required . Always . Message
 
+-- | Iso: @ 'FieldType' ('Optional' n ['Message' a]) = 'Maybe' a @
 instance HasField (Field n (OptionalField (Maybe (Message a)))) where
   type FieldType (Field n (OptionalField (Maybe (Message a)))) = Maybe a
   getField = fmap runMessage . runOptional . runField
   putField = Field . Optional . fmap Message
 
+-- | Iso: @ 'FieldType' ('Repeated' n ['Message' a]) = [a] @
 instance HasField (Field n (RepeatedField [Message a])) where
   type FieldType (Field n (RepeatedField [Message a])) = [a]
   getField = fmap runMessage . runRepeated . runField

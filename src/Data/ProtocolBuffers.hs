@@ -1,21 +1,27 @@
 -- |
 --
--- An implementation of Protocol Buffers in pure Haskell. <http://code.google.com/p/protobuf/>
+-- An implementation of Protocol Buffers in pure Haskell.
 --
--- It is intended to be used via "GHC.Generics" and does not require @ .proto @ files to function.
+-- Extensive documentation is available at <https://developers.google.com/protocol-buffers/docs/overview>
+-- and Google's reference implementation can be found at <http://code.google.com/p/protobuf/>
+--
+-- It is intended to be used via "GHC.Generics" and does not require @ .proto @ files to function. Tools are being developed that will convert a Haskell Protobuf definition into a @ .proto @ and vise versa.
 --
 -- Given a message definition:
 --
 -- @
 --{-\# LANGUAGE DeriveGeneric \#-}
 --
--- import "Data.ProtocolBuffers"
---import "GHC.Generics"
+-- import "Data.Int"
+--import "Data.ProtocolBuffers"
+--import "Data.TypeLevel" ('D1', 'D2', 'D3')
+--import "Data.Text"
+--import "GHC.Generics" ('Generic')
 --
 -- data Foo = Foo
---   { field1 :: 'Required' 'Data.TypeLevel.D1' ('Data.Monoid.Last' 'Data.Int.Int64') -- ^ The last field with tag = 1
---   , field2 :: 'Optional' 'Data.TypeLevel.D2' ('Data.Monoid.Last' 'Data.Text.Text') -- ^ The last field with tag = 2
---   , field3 :: 'Repeated' 'Data.TypeLevel.D3' 'Prelude.Bool' -- ^ All fields with tag = 3, ordering is preserved
+--   { field1 :: 'Required' 'Data.TypeLevel.D1' ('Value' 'Data.Int.Int64') -- ^ The last field with tag = 1
+--   , field2 :: 'Optional' 'Data.TypeLevel.D2' ('Value' 'Data.Text.Text') -- ^ The last field with tag = 2
+--   , field3 :: 'Repeated' 'Data.TypeLevel.D3' ('Value' 'Prelude.Bool') -- ^ All fields with tag = 3, ordering is preserved
 --   } deriving ('GHC.Generics.Generic', 'Prelude.Show')
 --
 -- instance 'Encode' Foo
@@ -24,67 +30,105 @@
 --
 -- It can then be used for encoding:
 --
--- >>> let msg = Foo{field1 = putValue (Last (Just 42)), field2 = mempty, field3 = putValue [True, False]}
+-- >>> let msg = Foo{field1 = putField 42, field2 = mempty, field3 = putField [True, False]}
 -- >>> fmap hex runPut $ encodeMessage msg
 -- "082A18011800"
 --
 -- As well as decoding:
 --
 -- >>> runGet decodeMessage =<< unhex "082A18011800" :: Either String Foo
--- Right (Foo {field1 = Tagged (Last {getLast = Just 42}), field2 = Tagged (Optionally {runOptionally = Last {getLast = Nothing}}), field3 = Tagged [True,False]})
---
+-- Right
+--   (Foo
+--     { field1 = Field {runField = Required {runRequired = Always {runAlways = Value {runValue = 42}}}}
+--     , field2 = Field {runField = Optional {runOptional = Last {getLast = Nothing}}}
+--     , field3 = Field {runField = Repeated {runRepeated = [Value {runValue = True},Value {runValue = False}]}}
+--     }
+--   )
 --
 module Data.ProtocolBuffers
-  ( -- * Encoding
+  ( -- * Message Serialization
+    --
+    -- ** Encoding
     --
     Encode(..)
   , encodeMessage
   , encodeLengthPrefixedMessage
 
-    -- * Decoding
+    -- ** Decoding
     --
   , Decode(..)
   , decodeMessage
   , decodeLengthPrefixedMessage
 
-    -- * Field Tags
+    -- * Fields
+    --
+    -- ** Tags
     -- |
     --
-    -- Restricted type aliases of 'Data.Tagged.Tagged'. Follow these rules to define fields supported by the generic encoder/decoder:
-    --
-    -- * The 'n' phantom type parameter specifies the Protocol Buffers field tag (id).
-    --
-    -- * Field tags /must/ be an instance of 'Data.TypeLevel.Nat'.
-    --
-    -- * Field types /must/ be an instance of 'Data.Foldable.Foldable' to support encoding.
-    --
-    -- * Field types /should/ be an instance of 'Data.Monoid.Monoid' to support decoding.
-    --   For types that are not already 'Data.Monoid.Monoid' instances,
-    --   the use of 'Data.Monoid.Last' models the behavior recommended by the Protocol Buffers documentation.
+    -- Restricted type aliases of 'Field'. These are used to attach a field tag (a numeric id) to a field.
+    -- Each tag must be unique within a given message, though this is not currently checked or enforced.
     --
   , Required
   , Optional
   , Repeated
   , Packed
 
-    -- * Value Accessors
+    -- ** Accessors
+    -- |
     --
-  , Field
+    -- Fields tend to have rather complex types that are unpleasant to interact with.
+    -- 'HasField' was designed to hide this complexity and provide a consistent way of
+    -- getting and setting fields.
+    --
   , HasField(..)
 
-    -- * Value Selectors
+    -- ** Selectors
+    -- |
+    --
+    -- Follow these rules to define fields supported by the generic encoder/decoder:
+    --
+    -- * The 'n' phantom type parameter specifies the Protocol Buffers field tag (id).
+    --
+    -- * Field tags /must/ be an instance of 'Data.TypeLevel.Nat'.
+    --
+    -- * Field selectors /must/ be an instance of 'Data.Foldable.Foldable' to support encoding.
+    --
+    -- * Value selectors /must/ be an instance of 'Data.Monoid.Monoid' to support decoding.
+    --
+  , Field
+
+    -- * Values
+    --
+    -- ** Selectors
+    -- |
+    --
+    -- Each field value needs to specify the way it should be encoded.
     --
   , Value
-  , Always
   , Enumeration
-  , RequiredField(..)
-  , OptionalField(..)
-  , RepeatedField(..)
-  , PackedField(..)
-  , PackedList(..)
-  , Message(..)
+  , Message
+
+  -- * Wire Coding
+  -- |
+  --
+  -- Some primitive values can be more compactly represented. Fields that typically contain
+  -- negative or very large numbers should use the 'Signed' or 'Fixed' wrappers to select
+  -- their respective (efficient) formats.
+  --
   , Signed(..)
   , Fixed(..)
+
+  -- * Internal Goo
+  -- |
+  --
+  -- These types are exported but normally should not be used
+  --
+  , RequiredField
+  , OptionalField
+  , RepeatedField
+  , PackedField
+  , PackedList
+  , Always
   ) where
 
 import Data.ProtocolBuffers.Decode

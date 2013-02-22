@@ -11,7 +11,16 @@ module Data.ProtocolBuffers.Internal
   , zzDecode64
   , Field(..)
   , Value(..)
+  , Always(..)
+  , Enumeration(..)
+  , RequiredField(..)
+  , OptionalField(..)
+  , RepeatedField(..)
+  , PackedField(..)
+  , PackedList(..)
+  , Message(..)
   ) where
 
+import Data.ProtocolBuffers.Message
 import Data.ProtocolBuffers.Types
 import Data.ProtocolBuffers.Wire

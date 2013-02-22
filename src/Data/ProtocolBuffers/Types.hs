@@ -32,6 +32,8 @@ import Data.Monoid
 import Data.Traversable
 import Data.Typeable
 
+-- |
+-- 'Value' selects the normal/typical way for encoding primitive values.
 newtype Value a       = Value       {runValue       :: a}
   deriving (Bounded, Eq, Enum, Foldable, Functor, Monoid, Ord, NFData, Show, Traversable, Typeable)
 
@@ -44,9 +46,16 @@ newtype OptionalField a    = Optional    {runOptional    :: a}
 newtype RepeatedField a    = Repeated    {runRepeated    :: a}
   deriving (Bounded, Eq, Enum, Foldable, Functor, Monoid, Ord, NFData, Show, Traversable, Typeable)
 
+-- |
+-- Merely a way to hold a field tag along with its type, this shouldn't normally be referenced directly.
 newtype Field (n :: *) a = Field {runField :: a}
   deriving (Bounded, Eq, Enum, Foldable, Functor, Monoid, Ord, NFData, Show, Traversable, Typeable)
 
+-- |
+-- To provide consistent instances for serialization a 'Traversable' 'Functor' is needed to
+-- make 'Required' fields have the same shape as 'Optional', 'Repeated' and 'Packed'.
+--
+-- This is the 'Data.Functor.Identity.Identity' 'Functor' with a 'Show' instance.
 newtype Always a = Always {runAlways :: a}
   deriving (Bounded, Eq, Enum, Foldable, Functor, Ord, NFData, Show, Traversable, Typeable)
 
@@ -68,48 +77,55 @@ class HasField a where
   field :: Functor f => (FieldType a -> f (FieldType a)) -> a -> f a
   field f = fmap putField . f . getField
 
+-- | Iso: @ 'FieldType' ('Required' n ['Value' a]) = a @
 instance HasField (Field n (RequiredField (Always (Value a)))) where
   type FieldType (Field n (RequiredField (Always (Value a)))) = a
   getField = runValue . runAlways . runRequired . runField
   putField = Field . Required . Always . Value
 
+-- | Iso: @ 'FieldType' ('Required' n ['Enumeration' a]) = a @
 instance HasField (Field n (RequiredField (Always (Enumeration a)))) where
   type FieldType (Field n (RequiredField (Always (Enumeration a)))) = a
   getField = runEnumeration . runAlways . runRequired . runField
   putField = Field . Required . Always . Enumeration
 
+-- | Iso: @ 'FieldType' ('Optional' n ['Value' a]) = 'Maybe' a @
 instance HasField (Field n (OptionalField (Last (Value a)))) where
   type FieldType (Field n (OptionalField (Last (Value a)))) = Maybe a
   getField = fmap runValue . getLast . runOptional . runField
   putField = Field . Optional . Last . fmap Value
 
+-- | Iso: @ 'FieldType' ('Optional' n ['Enumeration' a]) = 'Maybe' a @
 instance HasField (Field n (OptionalField (Last (Enumeration a)))) where
   type FieldType (Field n (OptionalField (Last (Enumeration a)))) = Maybe a
   getField = fmap runEnumeration . getLast . runOptional . runField
   putField = Field . Optional . Last . fmap Enumeration
 
+-- | Iso: @ 'FieldType' ('Repeated' n ['Value' a]) = [a] @
 instance HasField (Field n (RepeatedField [Value a])) where
   type FieldType (Field n (RepeatedField [Value a])) = [a]
   getField = fmap runValue . runRepeated . runField
   putField = Field . Repeated . fmap Value
 
+-- | Iso: @ 'FieldType' ('Repeated' n ['Enumeration' a]) = [a] @
 instance HasField (Field n (RepeatedField [Enumeration a])) where
   type FieldType (Field n (RepeatedField [Enumeration a])) = [a]
   getField = fmap runEnumeration . runRepeated . runField
   putField = Field . Repeated . fmap Enumeration
 
+-- | Iso: @ 'FieldType' ('Packed' n ['Value' a]) = [a] @
 instance HasField (Field n (PackedField (PackedList (Value a)))) where
   type FieldType (Field n (PackedField (PackedList (Value a)))) = [a]
   getField = fmap runValue . unPackedList . runPackedField . runField
   putField = Field . PackedField . PackedList . fmap Value
 
+-- | Iso: @ 'FieldType' ('Packed' n ['Enumeration' a]) = [a] @
 instance HasField (Field n (PackedField (PackedList (Enumeration a)))) where
   type FieldType (Field n (PackedField (PackedList (Enumeration a)))) = [a]
   getField = fmap runEnumeration . unPackedList . runPackedField . runField
   putField = Field . PackedField . PackedList . fmap Enumeration
 
 -- | Optional fields. Values that are not found will return 'Nothing'.
--- type Optional n (f a) = Field n (OptionalField (f (Last a)))
 type family Optional (n :: *) (a :: *) :: *
 type instance Optional n (Value a)       = Field n (OptionalField (Last (Value a)))
 type instance Optional n (Enumeration a) = Field n (OptionalField (Last (Enumeration a)))
@@ -126,13 +142,12 @@ type Repeated n a = Field n (RepeatedField [a])
 type Packed n a = Field n (PackedField (PackedList a))
 
 -- |
--- A newtype wrapper used to distinguish 'Prelude.Enum's from other field types.
 -- 'Enumeration' fields use 'Prelude.fromEnum' and 'Prelude.toEnum' when encoding and decoding messages.
 newtype Enumeration a = Enumeration {runEnumeration :: a}
   deriving (Bounded, Eq, Enum, Foldable, Functor, Ord, Monoid, NFData, Show, Traversable, Typeable)
 
 -- |
--- A traversable functor used to select packed sequence encoding/decoding.
+-- A 'Traversable' 'Functor' used to select packed sequence encoding/decoding.
 newtype PackedField a = PackedField {runPackedField :: a}
   deriving (Eq, Foldable, Functor, Monoid, NFData, Ord, Show, Traversable, Typeable)
 
