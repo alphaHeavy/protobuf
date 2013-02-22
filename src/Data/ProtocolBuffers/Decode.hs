@@ -21,6 +21,7 @@ import Data.Foldable
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import Data.Int (Int32, Int64)
+import Data.Maybe (fromMaybe)
 import Data.Monoid
 import Data.Serialize.Get
 import Data.Traversable (traverse)
@@ -120,6 +121,11 @@ instance (DecodeWire a, Tl.Nat n) => GDecode (K1 i (Field n (RequiredField (Alwa
 instance (DecodeWire (PackedList a), Tl.Nat n) => GDecode (K1 i (Packed n a)) where
   gdecode msg = fieldDecode PackedField msg
 
+-- |
+-- foldMapM implemented in a way that defers using (mempty :: b) unless the
+-- Foldable is empty, this allows the gross hack of pretending Always is
+-- a Monoid while strictly evaluating the accumulator
 foldMapM :: (Monad m, Foldable t, Monoid b) => (a -> m b) -> t a -> m b
-foldMapM f = foldlM go mempty where
-  go acc el = mappend acc `liftM` f el
+foldMapM f = liftM (fromMaybe mempty) . foldlM go Nothing where
+  go (Just !acc) = liftM (Just . mappend acc) . f
+  go Nothing     = liftM Just . f
