@@ -15,6 +15,7 @@ description:
   .
 license:             BSD3
 license-file:        LICENSE
+extra-source-files:  LICENSE.google-protobuf, LICENSE.haskell-protocol-buffers
 author:              Steve Severance, Nathan Howell
 maintainer:          sseverance@alphaheavy.com, nhowell@alphaheavy.com
 homepage:            https://github.com/alphaHeavy/protobuf
