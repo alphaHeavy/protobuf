@@ -6,8 +6,8 @@ description:
   .
 license:             BSD3
 license-file:        LICENSE
-author:              Steve Severance <sseverance@alphaheavy.com>
-maintainer:          Steve Severance <sseverance@alphaheavy.com>
+author:              Steve Severance, Nathan Howell
+maintainer:          sseverance@alphaheavy.com, nhowell@alphaheavy.com
 homepage:            https://github.com/alphaHeavy/protobuf
 bug-reports:         https://github.com/alphaHeavy/protobuf/issues
 category:            Data, Protocol
@@ -34,17 +34,17 @@ library
     Data.ProtocolBuffers.Types
     Data.ProtocolBuffers.Wire
   build-depends:
-    base              >= 3      && < 5,
-    bytestring,
-    cereal,
-    data-binary-ieee754,
-    deepseq,
+    base                       >= 4.5 && < 5,
+    bytestring                 >= 0.9,
+    cereal                     >= 0.3,
+    data-binary-ieee754        >= 0.4,
+    deepseq                    >= 1.1,
     ghc-prim,
-    mtl,
+    mtl                        == 2.*,
     -- pretty,
-    text,
-    type-level,
-    unordered-containers
+    text                       >= 0.10,
+    type-level                 >= 0.2,
+    unordered-containers       >= 0.2
   ghc-options:
     -Wall
 
@@ -56,7 +56,7 @@ executable protoc-gen-hs
   main-is:
     Main.hs
   build-depends:
-    base              >= 3      && < 5,
+    base                       >= 4.5 && < 5,
     bytestring,
     cereal,
     ghc-prim,
@@ -79,7 +79,7 @@ test-suite protobuf-test
   main-is:
     Main.hs
   build-depends:
-    base                       >= 3      && < 5,
+    base                       >= 4.5 && < 5,
     ghc-prim,
     bytestring,
     cereal,
@@ -91,10 +91,10 @@ test-suite protobuf-test
     type-level,
     unordered-containers,
     test-framework             >= 0.4,
-    test-framework-hunit       >= 0.2.6,
-    test-framework-quickcheck2 >= 0.2.10,
-    HUnit                      >= 1.2.2.3,
-    QuickCheck                 >= 2.4.0.1
+    test-framework-hunit       >= 0.2,
+    test-framework-quickcheck2 >= 0.2,
+    HUnit                      >= 1.2,
+    QuickCheck                 >= 2.4
 
 source-repository head
   type:     git
