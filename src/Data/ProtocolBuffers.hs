@@ -32,13 +32,22 @@
 --instance 'Decode' Foo
 -- @
 --
--- It can then be used for encoding:
+-- It can then be used for encoding and decoding.
+--
+-- To construct a message, use 'putField' to set each field value. 'Optional', 'Repeated' and 'Packed'
+-- fields can be set to their empty value by using 'Data.Monoid.mempty'. An example using record syntax for clarity:
 --
 -- >>> let msg = Foo{field1 = putField 42, field2 = mempty, field3 = putField [True, False]}
+--
+-- To serialize a message first convert it into a 'Data.Serialize.Put' by way of 'encodeMessage'
+-- and then to a 'Data.ByteString.ByteString' by using 'Data.Serialize.runPut'. Lazy
+-- 'Data.ByteString.Lazy.ByteString' serialization is done with 'Data.Serialize.runPutLazy'.
+--
 -- >>> fmap hex runPut $ encodeMessage msg
 -- "082A18011800"
 --
--- As well as decoding:
+-- Decoding is done with the inverse functions: 'decodeMessage'
+-- and 'Data.Serialize.runGet', or 'Data.Serialize.runGetLazy'.
 --
 -- >>> runGet decodeMessage =<< unhex "082A18011800" :: Either String Foo
 -- Right
@@ -48,6 +57,16 @@
 --     , field3 = Field {runField = Repeated {runRepeated = [Value {runValue = True},Value {runValue = False}]}}
 --     }
 --   )
+--
+-- Use 'getField' to read fields from a message:
+--
+-- >>> let Right msg = runGet decodeMessage =<< unhex "082A18011800" :: Either String Foo
+-- >>> getField $ field1 msg
+-- 42
+-- >>> getField $ field2 msg
+-- Nothing
+-- >>> getField $ field3 msg
+-- [True,False]
 --
 -- Some Protocol Buffers features are not currently implemented:
 --
