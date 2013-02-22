@@ -124,13 +124,13 @@ instance Decode m => DecodeWire (Message m) where
       Left err  -> fail $ "Embedded message decoding failed: " ++ show err
   decodeWire _ = empty
 
--- | Iso: @ 'FieldType' ('Required' n ['Message' a]) = a @
+-- | Iso: @ 'FieldType' ('Required' n ('Message' a)) = a @
 instance HasField (Field n (RequiredField (Always (Message a)))) where
   type FieldType (Field n (RequiredField (Always (Message a)))) = a
   getField = runMessage . runAlways. runRequired . runField
   putField = Field . Required . Always . Message
 
--- | Iso: @ 'FieldType' ('Optional' n ['Message' a]) = 'Maybe' a @
+-- | Iso: @ 'FieldType' ('Optional' n ('Message' a)) = 'Maybe' a @
 instance HasField (Field n (OptionalField (Maybe (Message a)))) where
   type FieldType (Field n (OptionalField (Maybe (Message a)))) = Maybe a
   getField = fmap runMessage . runOptional . runField

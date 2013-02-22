@@ -104,6 +104,10 @@ module Data.ProtocolBuffers
     --
     -- Each field value needs to specify the way it should be encoded.
     --
+    -- There are three built-in value selectors: 'Value', 'Enumeration' and 'Message'.
+    --
+    -- If you're unsure what value selector to use, 'Value' is probably the correct one.
+    --
   , Value
   , Enumeration
   , Message

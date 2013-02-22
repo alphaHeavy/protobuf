@@ -37,17 +37,29 @@ import Data.Typeable
 newtype Value a       = Value       {runValue       :: a}
   deriving (Bounded, Eq, Enum, Foldable, Functor, Monoid, Ord, NFData, Show, Traversable, Typeable)
 
+-- |
+-- 'RequiredField' is a newtype wrapped used to break overlapping instances
+-- for encoding and decoding values
 newtype RequiredField a    = Required    {runRequired    :: a}
   deriving (Bounded, Eq, Enum, Foldable, Functor, Monoid, Ord, NFData, Show, Traversable, Typeable)
 
+-- |
+-- 'OptionalField' is a newtype wrapped used to break overlapping instances
+-- for encoding and decoding values
 newtype OptionalField a    = Optional    {runOptional    :: a}
   deriving (Bounded, Eq, Enum, Foldable, Functor, Monoid, Ord, NFData, Show, Traversable, Typeable)
 
+-- |
+-- 'RepeatedField' is a newtype wrapped used to break overlapping instances
+-- for encoding and decoding values
 newtype RepeatedField a    = Repeated    {runRepeated    :: a}
   deriving (Bounded, Eq, Enum, Foldable, Functor, Monoid, Ord, NFData, Show, Traversable, Typeable)
 
 -- |
--- Merely a way to hold a field tag along with its type, this shouldn't normally be referenced directly.
+-- Fields are merely a way to hold a field tag along with its type, this shouldn't normally be referenced directly.
+--
+-- This provides better error messages than older versions which used 'Data.Tagged.Tagged'
+--
 newtype Field (n :: *) a = Field {runField :: a}
   deriving (Bounded, Eq, Enum, Foldable, Functor, Monoid, Ord, NFData, Show, Traversable, Typeable)
 
@@ -63,7 +75,23 @@ instance Monoid (Always a) where
   mempty = error "Always is not a Monoid"
   mappend _ y = y
 
--- | Functions for wrapping and unwrapping record fields
+-- |
+-- Functions for wrapping and unwrapping record fields.
+-- When applied they will have types similar to these:
+--
+-- @
+--'getField' :: 'Required' 'Data.TypeLevel.D1' ('Value' 'Data.Text.Text') -> 'Data.Text.Text'
+--'putField' :: 'Data.Text.Text' -> 'Required' 'Data.TypeLevel.D1' ('Value' 'Data.Text.Text')
+--
+--'getField' :: 'Optional' 'Data.TypeLevel.D2' ('Value' 'Data.Int.Int32') -> 'Maybe' 'Data.Int.Int32'
+--'putField' :: 'Maybe' 'Data.Int.Int32' -> 'Optional' 'Data.TypeLevel.D2' ('Value' 'Data.Int.Int32')
+--
+--'getField' :: 'Repeated' 'Data.TypeLevel.D3' ('Value' 'Double') -> ['Double']
+--'putField' :: ['Double'] -> 'Repeated' 'Data.TypeLevel.D3' ('Value' 'Double')
+--
+--'getField' :: 'Packed' 'Data.TypeLevel.D4' ('Value' 'Data.Word.Word64') -> ['Data.Word.Word64']
+--'putField' :: ['Data.Word.Word64'] -> 'Packed' 'Data.TypeLevel.D4' ('Value' 'Data.Word.Word64')
+-- @
 class HasField a where
   type FieldType a :: *
 
@@ -77,25 +105,25 @@ class HasField a where
   field :: Functor f => (FieldType a -> f (FieldType a)) -> a -> f a
   field f = fmap putField . f . getField
 
--- | Iso: @ 'FieldType' ('Required' n ['Value' a]) = a @
+-- | Iso: @ 'FieldType' ('Required' n ('Value' a)) = a @
 instance HasField (Field n (RequiredField (Always (Value a)))) where
   type FieldType (Field n (RequiredField (Always (Value a)))) = a
   getField = runValue . runAlways . runRequired . runField
   putField = Field . Required . Always . Value
 
--- | Iso: @ 'FieldType' ('Required' n ['Enumeration' a]) = a @
+-- | Iso: @ 'FieldType' ('Required' n ('Enumeration' a)) = a @
 instance HasField (Field n (RequiredField (Always (Enumeration a)))) where
   type FieldType (Field n (RequiredField (Always (Enumeration a)))) = a
   getField = runEnumeration . runAlways . runRequired . runField
   putField = Field . Required . Always . Enumeration
 
--- | Iso: @ 'FieldType' ('Optional' n ['Value' a]) = 'Maybe' a @
+-- | Iso: @ 'FieldType' ('Optional' n ('Value' a)) = 'Maybe' a @
 instance HasField (Field n (OptionalField (Last (Value a)))) where
   type FieldType (Field n (OptionalField (Last (Value a)))) = Maybe a
   getField = fmap runValue . getLast . runOptional . runField
   putField = Field . Optional . Last . fmap Value
 
--- | Iso: @ 'FieldType' ('Optional' n ['Enumeration' a]) = 'Maybe' a @
+-- | Iso: @ 'FieldType' ('Optional' n ('Enumeration' a)) = 'Maybe' a @
 instance HasField (Field n (OptionalField (Last (Enumeration a)))) where
   type FieldType (Field n (OptionalField (Last (Enumeration a)))) = Maybe a
   getField = fmap runEnumeration . getLast . runOptional . runField
