@@ -1,8 +1,17 @@
 name:                protobuf
 version:             0.1
-synopsis:            Implementation of Google Protocol Buffers.
+synopsis:            Google Protocol Buffers via GHC.Generics
 description:
-  Protocol Buffers for GHC.Generics
+  Google Protocol Buffers via GHC.Generics.
+  .
+  Protocol Buffers are a way of encoding structured data in an efficient yet extensible format.
+  Google uses Protocol Buffers for almost all of its internal RPC protocols and file formats.
+  .
+  This library supports a useful subset of Google Protocol Buffers message specifications
+  in a Haskell. No preprocessor or additional build steps are required for message encoding and decoding.
+  .
+  Record specifications are built by defining records with specially defined fields that
+  capture most of the Protocol Buffers specification language.
   .
 license:             BSD3
 license-file:        LICENSE
