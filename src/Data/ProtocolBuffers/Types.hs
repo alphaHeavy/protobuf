@@ -33,7 +33,7 @@ import Data.Traversable
 import Data.Typeable
 
 -- |
--- 'Value' selects the normal/typical way for encoding primitive values.
+-- 'Value' selects the normal/typical way for encoding scalar (primitive) values.
 newtype Value a       = Value       {runValue       :: a}
   deriving (Bounded, Eq, Enum, Foldable, Functor, Monoid, Ord, NFData, Show, Traversable, Typeable)
 

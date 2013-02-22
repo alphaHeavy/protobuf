@@ -49,6 +49,16 @@
 --     }
 --   )
 --
+-- Some Protocol Buffers features are not currently implemented:
+--
+--   * Default values for 'Optional' fields
+--
+--   * Extension fields
+--
+--   * Storing unknown fields, those without a mapped field tag in message record
+--
+--   * Tag-delimited Groups, deprecated in lieu of 'Message'
+--
 module Data.ProtocolBuffers
   ( -- * Message Serialization
     --
