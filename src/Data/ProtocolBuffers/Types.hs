@@ -129,25 +129,25 @@ instance HasField (Field n (OptionalField (Last (Enumeration a)))) where
   getField = fmap runEnumeration . getLast . runOptional . runField
   putField = Field . Optional . Last . fmap Enumeration
 
--- | Iso: @ 'FieldType' ('Repeated' n ['Value' a]) = [a] @
+-- | Iso: @ 'FieldType' ('Repeated' n ('Value' a)) = [a] @
 instance HasField (Field n (RepeatedField [Value a])) where
   type FieldType (Field n (RepeatedField [Value a])) = [a]
   getField = fmap runValue . runRepeated . runField
   putField = Field . Repeated . fmap Value
 
--- | Iso: @ 'FieldType' ('Repeated' n ['Enumeration' a]) = [a] @
+-- | Iso: @ 'FieldType' ('Repeated' n ('Enumeration' a)) = [a] @
 instance HasField (Field n (RepeatedField [Enumeration a])) where
   type FieldType (Field n (RepeatedField [Enumeration a])) = [a]
   getField = fmap runEnumeration . runRepeated . runField
   putField = Field . Repeated . fmap Enumeration
 
--- | Iso: @ 'FieldType' ('Packed' n ['Value' a]) = [a] @
+-- | Iso: @ 'FieldType' ('Packed' n ('Value' a)) = [a] @
 instance HasField (Field n (PackedField (PackedList (Value a)))) where
   type FieldType (Field n (PackedField (PackedList (Value a)))) = [a]
   getField = fmap runValue . unPackedList . runPackedField . runField
   putField = Field . PackedField . PackedList . fmap Value
 
--- | Iso: @ 'FieldType' ('Packed' n ['Enumeration' a]) = [a] @
+-- | Iso: @ 'FieldType' ('Packed' n ('Enumeration' a)) = [a] @
 instance HasField (Field n (PackedField (PackedList (Enumeration a)))) where
   type FieldType (Field n (PackedField (PackedList (Enumeration a)))) = [a]
   getField = fmap runEnumeration . unPackedList . runPackedField . runField
