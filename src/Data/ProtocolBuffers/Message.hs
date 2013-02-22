@@ -59,7 +59,7 @@ instance (Generic m, GMessageMonoid (Rep m)) => Monoid (Message m) where
   Message x `mappend` Message y = Message . to $ gmappend (from x) (from y)
 
 instance (Decode a, Monoid (Message a), Tl.Nat n) => GDecode (K1 i (Field n (RequiredField (Always (Message a))))) where
-  gdecode msg = fieldDecode (Required . Always) msg
+  gdecode = fieldDecode (Required . Always)
 
 instance (Decode a, Monoid (Message a), Tl.Nat n) => GDecode (K1 i (Field n (OptionalField (Maybe (Message a))))) where
   gdecode msg = fieldDecode (Optional . Just) msg <|> pure (K1 mempty)
@@ -69,7 +69,7 @@ class GMessageMonoid (f :: * -> *) where
   gmappend :: f a -> f a -> f a
 
 instance GMessageMonoid f => GMessageMonoid (M1 i c f) where
-  gmempty = M1 $ gmempty
+  gmempty = M1 gmempty
   gmappend (M1 x) (M1 y) = M1 (gmappend x y)
 
 instance (GMessageMonoid x, GMessageMonoid y) => GMessageMonoid (x :*: y) where
