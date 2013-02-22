@@ -3,9 +3,13 @@
 -- An implementation of Protocol Buffers in pure Haskell.
 --
 -- Extensive documentation is available at <https://developers.google.com/protocol-buffers/docs/overview>
--- and Google's reference implementation can be found at <http://code.google.com/p/protobuf/>
+-- and Google's reference implementation can be found at <http://code.google.com/p/protobuf/>.
 --
--- It is intended to be used via "GHC.Generics" and does not require @ .proto @ files to function. Tools are being developed that will convert a Haskell Protobuf definition into a @ .proto @ and vise versa.
+-- It is intended to be used via "GHC.Generics" and does not require @ .proto @ files to function.
+-- Tools are being developed that will convert a Haskell Protobuf definition into a @ .proto @ and vise versa.
+--
+-- The "Data.TypeLevel" dependency is required due to <http://hackage.haskell.org/trac/ghc/ticket/7459>.
+-- I believe the partial fix already committed will allow migrating to "GHC.TypeLits" once GHC 7.8.1 is released.
 --
 -- Given a message definition:
 --
@@ -14,9 +18,9 @@
 --
 -- import "Data.Int"
 --import "Data.ProtocolBuffers"
---import "Data.TypeLevel" ('D1', 'D2', 'D3')
+--import "Data.TypeLevel" ('Data.TypeLevel.D1', 'Data.TypeLevel.D2', 'Data.TypeLevel.D3')
 --import "Data.Text"
---import "GHC.Generics" ('Generic')
+--import "GHC.Generics" ('GHC.Generics.Generic')
 --
 -- data Foo = Foo
 --   { field1 :: 'Required' 'Data.TypeLevel.D1' ('Value' 'Data.Int.Int64') -- ^ The last field with tag = 1
@@ -121,18 +125,6 @@ module Data.ProtocolBuffers
   --
   , Signed(..)
   , Fixed(..)
-
-  -- * Internal Goo
-  -- |
-  --
-  -- These types are exported but normally should not be used
-  --
-  , RequiredField
-  , OptionalField
-  , RepeatedField
-  , PackedField
-  , PackedList
-  , Always
   ) where
 
 import Data.ProtocolBuffers.Decode
