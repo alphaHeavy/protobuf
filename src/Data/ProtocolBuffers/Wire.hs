@@ -409,6 +409,15 @@ instance DecodeWire (PackedList (Value Bool)) where
     xs <- decodePackedList getVarInt x
     return . PackedList $ toEnum <$> xs
 
+instance Enum a => EncodeWire (PackedList (Enumeration a)) where
+  encodeWire t (PackedList xs) =
+    encodeWire t . runPut $ traverse_ (putVarUInt . fromEnum) xs
+
+instance Enum a => DecodeWire (PackedList (Enumeration a)) where
+  decodeWire x = do
+    xs <- decodePackedList getVarInt x
+    return . PackedList $ toEnum <$> xs
+
 instance (Foldable f, Enum a) => EncodeWire (Enumeration (f a)) where
   encodeWire t = traverse_ (encodeWire t . c) . runEnumeration where
     c :: a -> Int32
