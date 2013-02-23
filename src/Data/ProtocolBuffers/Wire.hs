@@ -281,14 +281,23 @@ instance DecodeWire T.Text where
 decodePackedList :: Get a -> WireField -> Get [a]
 {-# INLINE decodePackedList #-}
 decodePackedList g (DelimitedField _ bs) =
-  case runGet (some g) bs of
+  case runGet (many g) bs of
     Right val -> return val
     Left err  -> fail err
 decodePackedList _ _ = empty
 
+-- |
+-- Empty lists are not written out
+encodePackedList :: Tag -> Put -> Put
+{-# INLINE encodePackedList #-}
+encodePackedList t p
+  | bs <- runPut p
+  , not (B.null bs) = encodeWire t bs
+  | otherwise = pure ()
+
 instance EncodeWire (PackedList (Value Int32)) where
   encodeWire t (PackedList xs) =
-    encodeWire t . runPut $ traverse_ (putVarSInt . runValue) xs
+    encodePackedList t $ traverse_ (putVarSInt . runValue) xs
 
 instance DecodeWire (PackedList (Value Int32)) where
   decodeWire x = do
@@ -297,7 +306,7 @@ instance DecodeWire (PackedList (Value Int32)) where
 
 instance EncodeWire (PackedList (Value Int64)) where
   encodeWire t (PackedList xs) =
-    encodeWire t . runPut $ traverse_ (putVarSInt . runValue) xs
+    encodePackedList t $ traverse_ (putVarSInt . runValue) xs
 
 instance DecodeWire (PackedList (Value Int64)) where
   decodeWire x = do
@@ -306,7 +315,7 @@ instance DecodeWire (PackedList (Value Int64)) where
 
 instance EncodeWire (PackedList (Value Word32)) where
   encodeWire t (PackedList xs) =
-    encodeWire t . runPut $ traverse_ (putVarUInt . runValue) xs
+    encodePackedList t $ traverse_ (putVarUInt . runValue) xs
 
 instance DecodeWire (PackedList (Value Word32)) where
   decodeWire x = do
@@ -315,7 +324,7 @@ instance DecodeWire (PackedList (Value Word32)) where
 
 instance EncodeWire (PackedList (Value Word64)) where
   encodeWire t (PackedList xs) =
-    encodeWire t . runPut $ traverse_ (putVarUInt . runValue) xs
+    encodePackedList t $ traverse_ (putVarUInt . runValue) xs
 
 instance DecodeWire (PackedList (Value Word64)) where
   decodeWire x = do
@@ -325,7 +334,7 @@ instance DecodeWire (PackedList (Value Word64)) where
 instance EncodeWire (PackedList (Value (Signed Int32))) where
   encodeWire t (PackedList xs) = do
     let c (Signed x) = putVarSInt $ zzEncode32 x
-    encodeWire t . runPut $ traverse_ (c . runValue) xs
+    encodePackedList t $ traverse_ (c . runValue) xs
 
 instance DecodeWire (PackedList (Value (Signed Int32))) where
   decodeWire x = do
@@ -335,7 +344,7 @@ instance DecodeWire (PackedList (Value (Signed Int32))) where
 instance EncodeWire (PackedList (Value (Signed Int64))) where
   encodeWire t (PackedList xs) = do
     let c (Signed x) = putVarSInt $ zzEncode64 x
-    encodeWire t . runPut $ traverse_ (c . runValue) xs
+    encodePackedList t $ traverse_ (c . runValue) xs
 
 instance DecodeWire (PackedList (Value (Signed Int64))) where
   decodeWire x = do
@@ -345,7 +354,7 @@ instance DecodeWire (PackedList (Value (Signed Int64))) where
 instance EncodeWire (PackedList (Value (Fixed Word32))) where
   encodeWire t (PackedList xs) = do
     let c (Fixed x) = putWord32le x
-    encodeWire t . runPut $ traverse_ (c . runValue) xs
+    encodePackedList t $ traverse_ (c . runValue) xs
 
 instance DecodeWire (PackedList (Value (Fixed Word32))) where
   decodeWire x = do
@@ -355,7 +364,7 @@ instance DecodeWire (PackedList (Value (Fixed Word32))) where
 instance EncodeWire (PackedList (Value (Fixed Word64))) where
   encodeWire t (PackedList xs) = do
     let c (Fixed x) = putWord64le x
-    encodeWire t . runPut $ traverse_ (c . runValue) xs
+    encodePackedList t $ traverse_ (c . runValue) xs
 
 instance DecodeWire (PackedList (Value (Fixed Word64))) where
   decodeWire x = do
@@ -365,7 +374,7 @@ instance DecodeWire (PackedList (Value (Fixed Word64))) where
 instance EncodeWire (PackedList (Value (Fixed Int32))) where
   encodeWire t (PackedList xs) = do
     let c (Fixed x) = putWord32le $ fromIntegral x
-    encodeWire t . runPut $ traverse_ (c . runValue) xs
+    encodePackedList t $ traverse_ (c . runValue) xs
 
 instance DecodeWire (PackedList (Value (Fixed Int32))) where
   decodeWire x = do
@@ -375,7 +384,7 @@ instance DecodeWire (PackedList (Value (Fixed Int32))) where
 instance EncodeWire (PackedList (Value (Fixed Int64))) where
   encodeWire t (PackedList xs) = do
     let c (Fixed x) = putWord64le $ fromIntegral x
-    encodeWire t . runPut $ traverse_ (c . runValue) xs
+    encodePackedList t $ traverse_ (c . runValue) xs
 
 instance DecodeWire (PackedList (Value (Fixed Int64))) where
   decodeWire x = do
@@ -384,7 +393,7 @@ instance DecodeWire (PackedList (Value (Fixed Int64))) where
 
 instance EncodeWire (PackedList (Value Float)) where
   encodeWire t (PackedList xs) =
-    encodeWire t . runPut $ traverse_ (putFloat32le . runValue) xs
+    encodePackedList t $ traverse_ (putFloat32le . runValue) xs
 
 instance DecodeWire (PackedList (Value Float)) where
   decodeWire x = do
@@ -393,7 +402,7 @@ instance DecodeWire (PackedList (Value Float)) where
 
 instance EncodeWire (PackedList (Value Double)) where
   encodeWire t (PackedList xs) =
-    encodeWire t . runPut $ traverse_ (putFloat64le . runValue) xs
+    encodePackedList t $ traverse_ (putFloat64le . runValue) xs
 
 instance DecodeWire (PackedList (Value Double)) where
   decodeWire x = do
@@ -402,7 +411,7 @@ instance DecodeWire (PackedList (Value Double)) where
 
 instance EncodeWire (PackedList (Value Bool)) where
   encodeWire t (PackedList xs) =
-    encodeWire t . runPut $ traverse_ (putVarUInt . fromEnum) xs
+    encodePackedList t $ traverse_ (putVarUInt . fromEnum) xs
 
 instance DecodeWire (PackedList (Value Bool)) where
   decodeWire x = do
@@ -411,7 +420,7 @@ instance DecodeWire (PackedList (Value Bool)) where
 
 instance Enum a => EncodeWire (PackedList (Enumeration a)) where
   encodeWire t (PackedList xs) =
-    encodeWire t . runPut $ traverse_ (putVarUInt . fromEnum) xs
+    encodePackedList t $ traverse_ (putVarUInt . fromEnum) xs
 
 instance Enum a => DecodeWire (PackedList (Enumeration a)) where
   decodeWire x = do
