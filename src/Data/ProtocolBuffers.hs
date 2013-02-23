@@ -32,7 +32,8 @@
 --instance 'Decode' Foo
 -- @
 --
--- It can then be used for encoding and decoding.
+-- It can then be used for encoding and decoding. The 'Encode' and 'Decode' instances are derived automatically
+-- using DeriveGeneric and DefaultSignatures as outlined here: <http://www.haskell.org/haskellwiki/GHC.Generics#More_general_default_methods>.
 --
 -- To construct a message, use 'putField' to set each field value. 'Optional', 'Repeated' and 'Packed'
 -- fields can be set to their empty value by using 'Data.Monoid.mempty'. An example using record syntax for clarity:
