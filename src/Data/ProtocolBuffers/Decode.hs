@@ -121,6 +121,9 @@ instance (DecodeWire a, Tl.Nat n) => GDecode (K1 i (Field n (RequiredField (Alwa
 instance (DecodeWire (PackedList a), Tl.Nat n) => GDecode (K1 i (Packed n a)) where
   gdecode msg = fieldDecode PackedField msg
 
+instance GDecode U1 where
+  gdecode _ = return U1
+
 -- |
 -- foldMapM implemented in a way that defers using (mempty :: b) unless the
 -- Foldable is empty, this allows the gross hack of pretending Always is

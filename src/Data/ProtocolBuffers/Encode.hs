@@ -63,3 +63,6 @@ instance (GEncode a, GEncode b) => GEncode (a :+: b) where
 instance (EncodeWire a, Tl.Nat n, Foldable f) => GEncode (K1 i (Field n (f a))) where
   gencode = traverse_ (encodeWire tag) . runField . unK1 where
     tag = fromIntegral $ Tl.toInt (undefined :: n)
+
+instance GEncode U1 where
+  gencode _ = return ()
