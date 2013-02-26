@@ -70,7 +70,7 @@ import Data.ProtocolBuffers.Wire
 -- implies that you may want to add a constraint to the internal 'GMessageMonoid' class:
 --
 -- @
---\/tmp\/tst.hs:18:10:
+-- \/tmp\/tst.hs:18:10:
 --   Could not deduce (protobuf-0.1:'Data.ProtocolBuffers.Message.GMessageMonoid' ('Rep' a))
 --     arising from a use of `protobuf-0.1: 'Data.ProtocolBuffers.Decode' .$gdmdecode'
 --   from the context ('Decode' a)
