@@ -51,6 +51,47 @@ import Data.ProtocolBuffers.Wire
 --instance 'Decode' Outer
 -- @
 --
+-- It's worth noting that @ 'Message' a @ is a 'Monoid' and 'NFData' instance. The 'Monoid' behavior models
+-- that of the Protocol Buffers documentation, effectively 'Data.Monoid.Last'. It's done with a fairly big hammer
+-- and it isn't possible to override this behavior. This can cause some less-obvious compile errors for
+-- paramterized 'Message' types:
+--
+-- @
+--data Inner = Inner{inner :: 'Required' 'D2' ('Value' 'Float')} deriving ('Generic', 'Show')
+--instance 'Encode' Inner
+--instance 'Decode' Inner
+--
+--data Outer a = Outer{outer :: 'Required' 'D3' ('Message' a)} deriving ('Generic', 'Show')
+--instance 'Encode' a => 'Encode' (Outer a)
+--instance 'Decode' a => 'Decode' (Outer a)
+-- @
+--
+-- This fails because 'Decode' needs to know that the message can be merged. The resulting error
+-- implies that you may want to add a constraint to the internal 'GMessageMonoid' class:
+--
+-- @
+--\/tmp\/tst.hs:18:10:
+--   Could not deduce (protobuf-0.1:'Data.ProtocolBuffers.Message.GMessageMonoid' ('Rep' a))
+--     arising from a use of `protobuf-0.1: 'Data.ProtocolBuffers.Decode' .$gdmdecode'
+--   from the context ('Decode' a)
+--     bound by the instance declaration at \/tmp\/tst.hs:18:10-39
+--   Possible fix:
+--     add an instance declaration for
+--     (protobuf-0.1:'Data.ProtocolBuffers.Message.GMessageMonoid' ('Rep' a))
+--   In the expression:
+--     (protobuf-0.1:'Data.ProtocolBuffers.Decode'.$gdmdecode)
+--   In an equation for `decode':
+--       decode = (protobuf-0.1:'Data.ProtocolBuffers.Decode' .$gdmdecode)
+--   In the instance declaration for `'Decode' (Outer a)'
+-- @
+--
+-- The correct fix is to add the 'Monoid' constraint for the message:
+--
+-- @
+-- - instance ('Encode' a) => 'Decode' (Outer a)
+-- + instance ('Monoid' ('Message' a), 'Decode' a) => 'Decode' (Outer a)
+-- @
+--
 newtype Message m = Message {runMessage :: m}
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
