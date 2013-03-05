@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -44,6 +45,12 @@ import Data.TypeLevel (D1, D2, D3, D4, Nat, reifyIntegral)
 main :: IO ()
 main = defaultMain tests
 
+data EnumFoo
+  = EnumFoo1
+  | EnumFoo2
+  | EnumFoo3
+    deriving (Bounded, Enum, Eq, Typeable)
+
 tests =
   [ testGroup "Primitive Wire" primitiveWireTests
   , testGroup "Packed Wire" packedWireTests
@@ -74,6 +81,7 @@ primitiveTests f =
   , testProperty "float"    (f (Proxy :: Proxy Float))
   , testProperty "double"   (f (Proxy :: Proxy Double))
   , testProperty "bool"     (f (Proxy :: Proxy Bool))
+  , testProperty "enum"     (f (Proxy :: Proxy (Always (Enumeration EnumFoo))))
   ]
 
 primitiveWireTests :: [Test]
@@ -129,9 +137,17 @@ instance Arbitrary a => Arbitrary (Value a) where
   arbitrary = Value <$> arbitrary
   shrink (Value x) = fmap Value $ shrink x
 
+instance (Bounded a, Enum a) => Arbitrary (Enumeration a) where
+  arbitrary = Enumeration <$> arbitraryBoundedEnum
+  shrink (Enumeration x) = Enumeration . toEnum <$> shrink (fromEnum x)
+
 instance Arbitrary a => Arbitrary (Pb.Fixed a) where
   arbitrary = Pb.Fixed <$> arbitrary
   shrink (Pb.Fixed x) = fmap Pb.Fixed $ shrink x
+
+instance Arbitrary a => Arbitrary (Always a) where
+  arbitrary = Always <$> arbitrary
+  shrink (Always x) = Always <$> shrink x
 
 instance Arbitrary WireField where
   arbitrary = do

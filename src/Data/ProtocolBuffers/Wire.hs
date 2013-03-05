@@ -427,20 +427,20 @@ instance Enum a => DecodeWire (PackedList (Enumeration a)) where
     xs <- decodePackedList getVarInt x
     return . PackedList $ toEnum <$> xs
 
-instance (Foldable f, Enum a) => EncodeWire (Enumeration (f a)) where
-  encodeWire t = traverse_ (encodeWire t . c) . runEnumeration where
+instance (Foldable f, Enum a) => EncodeWire (f (Enumeration a)) where
+  encodeWire t = traverse_ (encodeWire t . c . runEnumeration) where
     c :: a -> Int32
     c = fromIntegral . fromEnum
 
-instance Enum a => DecodeWire (Enumeration (Maybe a)) where
+instance Enum a => DecodeWire (Maybe (Enumeration a)) where
   decodeWire f = c <$> decodeWire f where
-    c :: Int32 -> Enumeration (Maybe a)
-    c = Enumeration . Just . toEnum . fromIntegral
+    c :: Int32 -> Maybe (Enumeration a)
+    c = Just . Enumeration . toEnum . fromIntegral
 
-instance Enum a => DecodeWire (Enumeration (Always a)) where
+instance Enum a => DecodeWire (Always (Enumeration a)) where
   decodeWire f = c <$> decodeWire f where
-    c :: Int32 -> Enumeration (Always a)
-    c = Enumeration . Always . toEnum . fromIntegral
+    c :: Int32 -> Always (Enumeration a)
+    c = Always . Enumeration . toEnum . fromIntegral
 
 -- Taken from google's code, but I had to explcitly add fromIntegral in the right places:
 zzEncode32 :: Int32 -> Word32
