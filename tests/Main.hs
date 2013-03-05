@@ -138,7 +138,7 @@ instance Arbitrary a => Arbitrary (Value a) where
   shrink (Value x) = fmap Value $ shrink x
 
 instance (Bounded a, Enum a) => Arbitrary (Enumeration a) where
-  arbitrary = Enumeration <$> arbitraryBoundedEnum
+  arbitrary = Enumeration <$> elements [minBound..maxBound]
   shrink (Enumeration x) = Enumeration . toEnum <$> shrink (fromEnum x)
 
 instance Arbitrary a => Arbitrary (Pb.Fixed a) where
