@@ -56,6 +56,7 @@ tests =
   , testGroup "Packed Wire" packedWireTests
   , testGroup "Required Single Values" requiredSingleValueTests
   , testGroup "Optional Single Values" optionalSingleValueTests
+  , testGroup "Repeated Single Values" repeatedSingleValueTests
   , testGroup "Tags Out of Range" tagsOutOfRangeTests
   , testProperty "Generic message coding" prop_generic
   , testProperty "Generic length prefixed message coding" prop_generic_length_prefixed
@@ -109,6 +110,9 @@ requiredSingleValueTests = primitiveTests prop_req
 
 optionalSingleValueTests :: [Test]
 optionalSingleValueTests = primitiveTests prop_opt
+
+repeatedSingleValueTests :: [Test]
+repeatedSingleValueTests = primitiveTests prop_repeated
 
 tagsOutOfRangeTests :: [Test]
 tagsOutOfRangeTests = primitiveTests prop_req_out_of_range
@@ -175,6 +179,12 @@ newtype OptionalValue n a = OptionalValue (Optional n (Value a))
 
 instance (EncodeWire a, Nat n) => Encode (OptionalValue n a)
 instance (DecodeWire a, Nat n) => Decode (OptionalValue n a)
+
+newtype RepeatedValue n a = RepeatedValue (Repeated n (Value a))
+  deriving (Eq, Generic)
+
+instance (EncodeWire a, Nat n) => Encode (RepeatedValue n a)
+instance (DecodeWire a, Nat n) => Decode (RepeatedValue n a)
 
 prop_wire :: forall a . (Eq a, Arbitrary a, EncodeWire a, DecodeWire a, Typeable a) => Proxy a -> Property
 prop_wire _ = label ("prop_wire :: " ++ show (typeOf (undefined :: a))) $ do
@@ -252,6 +262,24 @@ prop_req _ = label ("prop_req :: " ++ show (typeOf (undefined :: a))) $ do
   val <- Just <$> arbitrary
   prop_req_reify (val :: Maybe (Value a)) prop_roundtrip
 
+prop_repeated_reify :: forall a r . [a] -> (forall n . Nat n => RepeatedValue n a -> Gen r) -> Gen r
+prop_repeated_reify a f = do
+  let g :: forall n . Nat n => n -> Gen r
+      g _ = f (RepeatedValue (putField a) :: RepeatedValue n a)
+  -- according to https://developers.google.com/protocol-buffers/docs/proto
+  -- the max is 2^^29 - 1, or 536,870,911.
+  --
+  -- the min is set to 0 since reifyIntegral only supports naturals, which
+  -- is also recommended since these are encoded as varints which have
+  -- fairly high overhead for negative tags
+  n <- choose (0, 536870911)
+  reifyIntegral (n :: Int32) g
+
+prop_repeated :: forall a . (Arbitrary a, Eq a, EncodeWire a, DecodeWire a, Typeable a) => Proxy a -> Property
+prop_repeated _ = label ("prop_repeated :: " ++ show (typeOf (undefined :: a))) $ do
+  val <- arbitrary
+  prop_repeated_reify (val :: [a]) prop_roundtrip
+
 prop_opt_reify :: forall a r . Maybe a -> (forall n . Nat n => OptionalValue n a -> Gen r) -> Gen r
 prop_opt_reify a f = do
   let g :: forall n . Nat n => n -> Gen r
@@ -271,6 +299,7 @@ prop_opt _ = label ("prop_opt :: " ++ show (typeOf (undefined :: a))) $ do
   prop_opt_reify (val :: Maybe a) prop_roundtrip
 
 -- implement the examples from https://developers.google.com/protocol-buffers/docs/encoding
+testSpecific :: (Eq a, Show a, Encode a, Decode a) => a -> B.ByteString -> IO ()
 testSpecific msg ref = do
   let bs = runPut $ encodeMessage msg
   assertEqual "Encoded message mismatch" bs ref
