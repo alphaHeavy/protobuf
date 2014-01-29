@@ -36,12 +36,12 @@ import Data.ProtocolBuffers.Wire
 -- Decode a Protocol Buffers message.
 decodeMessage :: Decode a => Get a
 {-# INLINE decodeMessage #-}
-decodeMessage = decode =<< go HashMap.empty where
+decodeMessage = decode =<< HashMap.map reverse <$> go HashMap.empty where
   go :: HashMap Tag [WireField] -> Get (HashMap Tag [WireField])
   go msg = do
     mfield <- Just <$> getWireField <|> return Nothing
     case mfield of
-      Just v  -> go $! HashMap.insertWith (flip (++)) (wireFieldTag v) [v] msg
+      Just v  -> go $! HashMap.insertWith (++) (wireFieldTag v) [v] msg
       Nothing -> return msg
 
 -- |
