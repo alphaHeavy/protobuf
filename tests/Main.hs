@@ -9,13 +9,13 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 import Test.Framework (Test, defaultMain, testGroup)
 import Test.Framework.Providers.HUnit
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.HUnit (Assertion, assert, assertEqual, assertFailure)
 import Test.QuickCheck
-import Test.QuickCheck.Modifiers
 import Test.QuickCheck.Property
 
 import GHC.Generics (Generic)
@@ -23,7 +23,6 @@ import GHC.Generics (Generic)
 import Control.Applicative
 import Control.Exception (SomeException, evaluate, try)
 import Control.Monad
-import Control.Monad.Identity
 import qualified Data.ByteString as B
 import Data.ByteString.Char8 ()
 import Data.ProtocolBuffers as Pb
@@ -32,12 +31,10 @@ import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import Data.Hex
 import Data.Int
-import Data.List
 import Data.Monoid
 import Data.Serialize (runGet, runPut)
 import Data.Proxy
 import Data.Text (Text)
-import qualified Data.Text as T
 import Data.Typeable
 import Data.Word
 import Data.TypeLevel (D1, D2, D3, D4, Nat, reifyIntegral)
@@ -51,6 +48,7 @@ data EnumFoo
   | EnumFoo3
     deriving (Bounded, Enum, Eq, Typeable)
 
+tests :: [Test]
 tests =
   [ testGroup "Primitive Wire" primitiveWireTests
   , testGroup "Packed Wire" packedWireTests
