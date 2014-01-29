@@ -41,7 +41,7 @@ decodeMessage = decode =<< HashMap.map reverse <$> go HashMap.empty where
   go msg = do
     mfield <- Just <$> getWireField <|> return Nothing
     case mfield of
-      Just v  -> go $! HashMap.insertWith (++) (wireFieldTag v) [v] msg
+      Just v  -> go $! HashMap.insertWith (\(x:[]) xs -> x:xs) (wireFieldTag v) [v] msg
       Nothing -> return msg
 
 -- |
