@@ -36,6 +36,7 @@ library
   exposed-modules:
     Data.ProtocolBuffers
     Data.ProtocolBuffers.Internal
+    Data.ProtocolBuffers.Orphans
   other-modules:
     Data.ProtocolBuffers.Decode
     Data.ProtocolBuffers.Encode
