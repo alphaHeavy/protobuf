@@ -237,10 +237,8 @@ prop_req_reify_out_of_range a f = do
   n <- choose (536870912, maxBound)
   reifyIntegral (n :: Int32) g
 
-prop_req_reify :: forall a r . a -> (forall n . Nat n => RequiredValue n a -> Gen r) -> Gen r
-prop_req_reify a f = do
-  let g :: forall n . Nat n => n -> Gen r
-      g _ = f (RequiredValue (putField a) :: RequiredValue n a)
+prop_reify_valid_tag :: forall r . (forall n . Nat n => n -> Gen r) -> Gen r
+prop_reify_valid_tag f = do
   -- according to https://developers.google.com/protocol-buffers/docs/proto
   -- the max is 2^^29 - 1, or 536,870,911.
   --
@@ -248,7 +246,12 @@ prop_req_reify a f = do
   -- is also recommended since these are encoded as varints which have
   -- fairly high overhead for negative tags
   n <- choose (0, 536870911)
-  reifyIntegral (n :: Int32) g
+  reifyIntegral (n :: Int32) f
+
+prop_req_reify :: forall a r . a -> (forall n . Nat n => RequiredValue n a -> Gen r) -> Gen r
+prop_req_reify a f = prop_reify_valid_tag g where
+  g :: forall n . Nat n => n -> Gen r
+  g _ = f (RequiredValue (putField a) :: RequiredValue n a)
 
 prop_req_out_of_range :: forall a . (Arbitrary a, EncodeWire a) => Proxy a -> Property
 prop_req_out_of_range _ = do
@@ -261,17 +264,9 @@ prop_req _ = label ("prop_req :: " ++ show (typeOf (undefined :: a))) $ do
   prop_req_reify (val :: Maybe (Value a)) prop_roundtrip
 
 prop_repeated_reify :: forall a r . [a] -> (forall n . Nat n => RepeatedValue n a -> Gen r) -> Gen r
-prop_repeated_reify a f = do
-  let g :: forall n . Nat n => n -> Gen r
-      g _ = f (RepeatedValue (putField a) :: RepeatedValue n a)
-  -- according to https://developers.google.com/protocol-buffers/docs/proto
-  -- the max is 2^^29 - 1, or 536,870,911.
-  --
-  -- the min is set to 0 since reifyIntegral only supports naturals, which
-  -- is also recommended since these are encoded as varints which have
-  -- fairly high overhead for negative tags
-  n <- choose (0, 536870911)
-  reifyIntegral (n :: Int32) g
+prop_repeated_reify a f = prop_reify_valid_tag g where
+  g :: forall n . Nat n => n -> Gen r
+  g _ = f (RepeatedValue (putField a) :: RepeatedValue n a)
 
 prop_repeated :: forall a . (Arbitrary a, Eq a, EncodeWire a, DecodeWire a, Typeable a) => Proxy a -> Property
 prop_repeated _ = label ("prop_repeated :: " ++ show (typeOf (undefined :: a))) $ do
@@ -279,17 +274,9 @@ prop_repeated _ = label ("prop_repeated :: " ++ show (typeOf (undefined :: a))) 
   prop_repeated_reify (val :: [a]) prop_roundtrip
 
 prop_opt_reify :: forall a r . Maybe a -> (forall n . Nat n => OptionalValue n a -> Gen r) -> Gen r
-prop_opt_reify a f = do
-  let g :: forall n . Nat n => n -> Gen r
-      g _ = f (OptionalValue (putField a) :: OptionalValue n a)
-  -- according to https://developers.google.com/protocol-buffers/docs/proto
-  -- the max is 2^^29 - 1, or 536,870,911.
-  --
-  -- the min is set to 0 since reifyIntegral only supports naturals, which
-  -- is also recommended since these are encoded as varints which have
-  -- fairly high overhead for negative tags
-  n <- choose (0, 536870911)
-  reifyIntegral (n :: Int32) g
+prop_opt_reify a f = prop_reify_valid_tag g where
+  g :: forall n . Nat n => n -> Gen r
+  g _ = f (OptionalValue (putField a) :: OptionalValue n a)
 
 prop_opt :: forall a . (Arbitrary a, Eq a, EncodeWire a, DecodeWire a, Typeable a) => Proxy a -> Property
 prop_opt _ = label ("prop_opt :: " ++ show (typeOf (undefined :: a))) $ do
