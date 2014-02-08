@@ -1,7 +1,12 @@
-dist
-cabal-dev
+build/
+dist/
+cabal-dev/
+.cabal-sandbox/
+cabal.sandbox.config
 *.o
 *.hi
 *.chi
 *.chs.h
+.*.swp
+.shake.database
 .virthualenv
