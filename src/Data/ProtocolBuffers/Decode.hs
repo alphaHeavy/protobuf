@@ -23,11 +23,12 @@ import qualified Data.HashMap.Strict as HashMap
 import Data.Int (Int32, Int64)
 import Data.Maybe (fromMaybe)
 import Data.Monoid
+import Data.Proxy
 import Data.Serialize.Get
 import Data.Traversable (traverse)
-import qualified Data.TypeLevel as Tl
 
 import GHC.Generics
+import GHC.TypeLits
 
 import Data.ProtocolBuffers.Types
 import Data.ProtocolBuffers.Wire
@@ -79,28 +80,28 @@ instance (GDecode x, GDecode y) => GDecode (x :+: y) where
   gdecode msg = L1 <$> gdecode msg <|> R1 <$> gdecode msg
 
 fieldDecode
-  :: forall a b i n p . (DecodeWire a, Monoid a, Tl.Nat n)
+  :: forall a b i n p . (DecodeWire a, Monoid a, KnownNat n)
   => (a -> b)
   -> HashMap Tag [WireField]
   -> Get (K1 i (Field n b) p)
 {-# INLINE fieldDecode #-}
 fieldDecode c msg =
-  let tag = fromIntegral $ Tl.toInt (undefined :: n)
+  let tag = fromIntegral $ natVal (Proxy :: Proxy n)
   in case HashMap.lookup tag msg of
     Just val -> K1 . Field . c <$> foldMapM decodeWire val
     Nothing  -> empty
 
-instance (DecodeWire a, Tl.Nat n) => GDecode (K1 i (Field n (OptionalField (Last (Value a))))) where
+instance (DecodeWire a, KnownNat n) => GDecode (K1 i (Field n (OptionalField (Last (Value a))))) where
   gdecode msg = fieldDecode Optional msg <|> pure (K1 mempty)
 
-instance (Enum a, Tl.Nat n) => GDecode (K1 i (Field n (RequiredField (Always (Enumeration a))))) where
+instance (Enum a, KnownNat n) => GDecode (K1 i (Field n (RequiredField (Always (Enumeration a))))) where
   gdecode msg = do
     K1 mx <- fieldDecode Required msg
     case mx :: Field n (RequiredField (Always (Value Int32))) of
       Field (Required (Always (Value x))) ->
         return . K1 . Field . Required . Always . Enumeration . toEnum $ fromIntegral x
 
-instance (Enum a, Tl.Nat n) => GDecode (K1 i (Field n (OptionalField (Last (Enumeration a))))) where
+instance (Enum a, KnownNat n) => GDecode (K1 i (Field n (OptionalField (Last (Enumeration a))))) where
   gdecode msg = do
     K1 mx <- fieldDecode Optional msg
     case mx :: Field n (OptionalField (Last (Value Int32))) of
@@ -108,17 +109,17 @@ instance (Enum a, Tl.Nat n) => GDecode (K1 i (Field n (OptionalField (Last (Enum
         return . K1 . Field . Optional . Last . Just . Enumeration . toEnum $ fromIntegral x
       _ -> pure (K1 mempty)
 
-instance (DecodeWire a, Tl.Nat n) => GDecode (K1 i (Repeated n a)) where
+instance (DecodeWire a, KnownNat n) => GDecode (K1 i (Repeated n a)) where
   gdecode msg =
-    let tag = fromIntegral $ Tl.toInt (undefined :: n)
+    let tag = fromIntegral $ natVal (Proxy :: Proxy n)
     in case HashMap.lookup tag msg of
       Just val -> K1 . Field . Repeated <$> traverse decodeWire val
       Nothing  -> pure $ K1 mempty
 
-instance (DecodeWire a, Tl.Nat n) => GDecode (K1 i (Field n (RequiredField (Always (Value a))))) where
+instance (DecodeWire a, KnownNat n) => GDecode (K1 i (Field n (RequiredField (Always (Value a))))) where
   gdecode msg = fieldDecode Required msg
 
-instance (DecodeWire (PackedList a), Tl.Nat n) => GDecode (K1 i (Packed n a)) where
+instance (DecodeWire (PackedList a), KnownNat n) => GDecode (K1 i (Packed n a)) where
   gdecode msg = fieldDecode PackedField msg
 
 instance GDecode U1 where

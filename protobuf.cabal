@@ -54,7 +54,6 @@ library
     mtl                        == 2.*,
     -- pretty,
     text                       >= 0.10,
-    type-level                 >= 0.2,
     unordered-containers       >= 0.2
   ghc-options:
     -Wall
@@ -75,7 +74,6 @@ executable protoc-gen-hs
     mtl,
     protobuf,
     text,
-    type-level,
     unordered-containers
   ghc-options:
     -Wall
@@ -99,7 +97,6 @@ test-suite protobuf-test
     protobuf,
     tagged,
     text,
-    type-level,
     unordered-containers,
     test-framework             >= 0.4,
     test-framework-hunit       >= 0.2,
