@@ -83,17 +83,17 @@ instance Monoid (Always a) where
 -- When applied they will have types similar to these:
 --
 -- @
---'getField' :: 'Required' 'Data.TypeLevel.D1' ('Value' 'Data.Text.Text') -> 'Data.Text.Text'
---'putField' :: 'Data.Text.Text' -> 'Required' 'Data.TypeLevel.D1' ('Value' 'Data.Text.Text')
+--'getField' :: 'Required' '1' ('Value' 'Data.Text.Text') -> 'Data.Text.Text'
+--'putField' :: 'Data.Text.Text' -> 'Required' '1' ('Value' 'Data.Text.Text')
 --
---'getField' :: 'Optional' 'Data.TypeLevel.D2' ('Value' 'Data.Int.Int32') -> 'Maybe' 'Data.Int.Int32'
---'putField' :: 'Maybe' 'Data.Int.Int32' -> 'Optional' 'Data.TypeLevel.D2' ('Value' 'Data.Int.Int32')
+--'getField' :: 'Optional' '2' ('Value' 'Data.Int.Int32') -> 'Maybe' 'Data.Int.Int32'
+--'putField' :: 'Maybe' 'Data.Int.Int32' -> 'Optional' '2' ('Value' 'Data.Int.Int32')
 --
---'getField' :: 'Repeated' 'Data.TypeLevel.D3' ('Value' 'Double') -> ['Double']
---'putField' :: ['Double'] -> 'Repeated' 'Data.TypeLevel.D3' ('Value' 'Double')
+--'getField' :: 'Repeated' '3' ('Value' 'Double') -> ['Double']
+--'putField' :: ['Double'] -> 'Repeated' '3' ('Value' 'Double')
 --
---'getField' :: 'Packed' 'Data.TypeLevel.D4' ('Value' 'Data.Word.Word64') -> ['Data.Word.Word64']
---'putField' :: ['Data.Word.Word64'] -> 'Packed' 'Data.TypeLevel.D4' ('Value' 'Data.Word.Word64')
+--'getField' :: 'Packed' '4' ('Value' 'Data.Word.Word64') -> ['Data.Word.Word64']
+--'putField' :: ['Data.Word.Word64'] -> 'Packed' '4' ('Value' 'Data.Word.Word64')
 -- @
 class HasField a where
   type FieldType a :: *
