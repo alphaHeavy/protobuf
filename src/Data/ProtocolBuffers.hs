@@ -8,9 +8,6 @@
 -- It is intended to be used via "GHC.Generics" and does not require @ .proto @ files to function.
 -- Tools are being developed that will convert a Haskell Protobuf definition into a @ .proto @ and vise versa.
 --
--- The "Data.TypeLevel" dependency is required due to <http://hackage.haskell.org/trac/ghc/ticket/7459>.
--- I believe the partial fix already committed will allow migrating to "GHC.TypeLits" once GHC 7.8.1 is released.
---
 -- Given a message definition:
 --
 -- @
@@ -18,14 +15,14 @@
 --
 -- import "Data.Int"
 --import "Data.ProtocolBuffers"
---import "Data.TypeLevel" ('Data.TypeLevel.D1', 'Data.TypeLevel.D2', 'Data.TypeLevel.D3')
 --import "Data.Text"
 --import "GHC.Generics" ('GHC.Generics.Generic')
+--import "GHC.TypeLits"
 --
 -- data Foo = Foo
---   { field1 :: 'Required' 'Data.TypeLevel.D1' ('Value' 'Data.Int.Int64') -- ^ The last field with tag = 1
---   , field2 :: 'Optional' 'Data.TypeLevel.D2' ('Value' 'Data.Text.Text') -- ^ The last field with tag = 2
---   , field3 :: 'Repeated' 'Data.TypeLevel.D3' ('Value' 'Prelude.Bool') -- ^ All fields with tag = 3, ordering is preserved
+--   { field1 :: 'Required' '1' ('Value' 'Data.Int.Int64') -- ^ The last field with tag = 1
+--   , field2 :: 'Optional' '2' ('Value' 'Data.Text.Text') -- ^ The last field with tag = 2
+--   , field3 :: 'Repeated' '3' ('Value' 'Prelude.Bool') -- ^ All fields with tag = 3, ordering is preserved
 --   } deriving ('GHC.Generics.Generic', 'Prelude.Show')
 --
 -- instance 'Encode' Foo
@@ -123,7 +120,7 @@ module Data.ProtocolBuffers
     --
     -- * The 'n' phantom type parameter specifies the Protocol Buffers field tag (id).
     --
-    -- * Field tags /must/ be an instance of 'Data.TypeLevel.Nat'.
+    -- * Field tags /must/ be an instance of 'GHC.TypeLits.Nat'.
     --
     -- * Field selectors /must/ be an instance of 'Data.Foldable.Foldable' to support encoding.
     --

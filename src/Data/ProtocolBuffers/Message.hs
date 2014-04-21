@@ -20,9 +20,9 @@ import Data.Monoid
 import Data.Serialize.Get
 import Data.Serialize.Put
 import Data.Traversable
-import qualified Data.TypeLevel as Tl
 
 import GHC.Generics
+import GHC.TypeLits
 
 import Data.ProtocolBuffers.Decode
 import Data.ProtocolBuffers.Encode
@@ -37,14 +37,14 @@ import Data.ProtocolBuffers.Wire
 --
 -- @
 --data Inner = Inner
---   { innerField :: 'Data.ProtocolBuffers.Required' 'Data.TypeLevel.D1' ('Data.ProtocolBuffers.Value' 'Data.Int.Int64')
+--   { innerField :: 'Data.ProtocolBuffers.Required' '1' ('Data.ProtocolBuffers.Value' 'Data.Int.Int64')
 --   } deriving ('GHC.Generics.Generic', 'Prelude.Show')
 --
 -- instance 'Encode' Inner
 --instance 'Decode' Inner
 --
 -- data Outer = Outer
---   { outerField :: 'Data.ProtocolBuffers.Required' 'Data.TypeLevel.D1' ('Data.ProtocolBuffers.Message' Inner)
+--   { outerField :: 'Data.ProtocolBuffers.Required' '1' ('Data.ProtocolBuffers.Message' Inner)
 --   } deriving ('GHC.Generics.Generic', 'Prelude.Show')
 --
 -- instance 'Encode' Outer
@@ -57,11 +57,11 @@ import Data.ProtocolBuffers.Wire
 -- paramterized 'Message' types:
 --
 -- @
---data Inner = Inner{inner :: 'Required' 'D2' ('Value' 'Float')} deriving ('Generic', 'Show')
+--data Inner = Inner{inner :: 'Required' '2' ('Value' 'Float')} deriving ('Generic', 'Show')
 --instance 'Encode' Inner
 --instance 'Decode' Inner
 --
---data Outer a = Outer{outer :: 'Required' 'D3' ('Message' a)} deriving ('Generic', 'Show')
+--data Outer a = Outer{outer :: 'Required' '3' ('Message' a)} deriving ('Generic', 'Show')
 --instance 'Encode' a => 'Encode' (Outer a)
 --instance 'Decode' a => 'Decode' (Outer a)
 -- @
@@ -99,10 +99,10 @@ instance (Generic m, GMessageMonoid (Rep m)) => Monoid (Message m) where
   mempty = Message . to $ gmempty
   Message x `mappend` Message y = Message . to $ gmappend (from x) (from y)
 
-instance (Decode a, Monoid (Message a), Tl.Nat n) => GDecode (K1 i (Field n (RequiredField (Always (Message a))))) where
+instance (Decode a, Monoid (Message a), KnownNat n) => GDecode (K1 i (Field n (RequiredField (Always (Message a))))) where
   gdecode = fieldDecode (Required . Always)
 
-instance (Decode a, Monoid (Message a), Tl.Nat n) => GDecode (K1 i (Field n (OptionalField (Maybe (Message a))))) where
+instance (Decode a, Monoid (Message a), KnownNat n) => GDecode (K1 i (Field n (OptionalField (Maybe (Message a))))) where
   gdecode msg = fieldDecode (Optional . Just) msg <|> pure (K1 mempty)
 
 class GMessageMonoid (f :: * -> *) where
