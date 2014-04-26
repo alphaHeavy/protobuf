@@ -12,12 +12,11 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-import Test.Framework (Test, defaultMain, testGroup)
-import Test.Framework.Providers.HUnit
-import Test.Framework.Providers.QuickCheck2 (testProperty)
-import Test.HUnit (Assertion, assert, assertEqual, assertFailure)
 import Test.QuickCheck
 import Test.QuickCheck.Property
+import Test.Tasty
+import Test.Tasty.HUnit
+import Test.Tasty.QuickCheck
 
 import GHC.Generics (Generic)
 import GHC.TypeLits
@@ -49,8 +48,8 @@ data EnumFoo
   | EnumFoo3
     deriving (Bounded, Enum, Eq, Typeable)
 
-tests :: [Test]
-tests =
+tests :: TestTree
+tests = testGroup "Root"
   [ testGroup "Primitive Wire" primitiveWireTests
   , testGroup "Packed Wire" packedWireTests
   , testGroup "Required Single Values" requiredSingleValueTests
@@ -67,7 +66,7 @@ tests =
   , testCase "Google WireFormatTest ZigZag" wireFormatZZ
   ]
 
-primitiveTests :: (forall a . (Eq a, Typeable a, Arbitrary a, EncodeWire a, DecodeWire a) => Proxy a -> Property) -> [Test]
+primitiveTests :: (forall a . (Eq a, Typeable a, Arbitrary a, EncodeWire a, DecodeWire a) => Proxy a -> Property) -> [TestTree]
 primitiveTests f =
   [ testProperty "int32"    (f (Proxy :: Proxy Int32))
   , testProperty "int64"    (f (Proxy :: Proxy Int64))
@@ -85,10 +84,10 @@ primitiveTests f =
   , testProperty "enum"     (f (Proxy :: Proxy (Always (Enumeration EnumFoo))))
   ]
 
-primitiveWireTests :: [Test]
+primitiveWireTests :: [TestTree]
 primitiveWireTests = primitiveTests prop_wire
 
-packedWireTests :: [Test]
+packedWireTests :: [TestTree]
 packedWireTests =
   [ testProperty "int32"    (prop_wire (Proxy :: Proxy (PackedList (Value Int32))))
   , testProperty "int64"    (prop_wire (Proxy :: Proxy (PackedList (Value Int64))))
@@ -105,16 +104,16 @@ packedWireTests =
   , testProperty "bool"     (prop_wire (Proxy :: Proxy (PackedList (Value Bool))))
   ]
 
-requiredSingleValueTests :: [Test]
+requiredSingleValueTests :: [TestTree]
 requiredSingleValueTests = primitiveTests prop_req
 
-optionalSingleValueTests :: [Test]
+optionalSingleValueTests :: [TestTree]
 optionalSingleValueTests = primitiveTests prop_opt
 
-repeatedSingleValueTests :: [Test]
+repeatedSingleValueTests :: [TestTree]
 repeatedSingleValueTests = primitiveTests prop_repeated
 
-tagsOutOfRangeTests :: [Test]
+tagsOutOfRangeTests :: [TestTree]
 tagsOutOfRangeTests = primitiveTests prop_req_out_of_range
 
 instance Arbitrary a => Arbitrary (Field n (RequiredField (Always (Value a)))) where

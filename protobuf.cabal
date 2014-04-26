@@ -98,9 +98,9 @@ test-suite protobuf-test
     tagged,
     text,
     unordered-containers,
-    test-framework             >= 0.4,
-    test-framework-hunit       >= 0.2,
-    test-framework-quickcheck2 >= 0.2,
+    tasty,
+    tasty-hunit,
+    tasty-quickcheck,
     HUnit                      >= 1.2,
     QuickCheck                 >= 2.4
 
