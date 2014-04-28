@@ -50,7 +50,6 @@ library
     cereal                     >= 0.3,
     data-binary-ieee754        >= 0.4,
     deepseq                    >= 1.1,
-    ghc-prim,
     mtl                        == 2.*,
     -- pretty,
     text                       >= 0.10,
@@ -89,7 +88,6 @@ test-suite protobuf-test
     Main.hs
   build-depends:
     base                       >= 4.7 && < 5,
-    ghc-prim,
     bytestring,
     cereal,
     hex,
