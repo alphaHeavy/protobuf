@@ -1,0 +1,19 @@
+0.2.0.1:
+  - Dropped ghc-prim dependency, what we need is now exported from base
+  - Added this CHANGELOG
+
+0.2.0:
+  - Transitioned to the compiler supported GHC.TypeLits, requiring GHC 7.8+
+  - Stopped building the protoc-gen-hs plugin, which is not functional
+  - Migrated tests from test-framework to tasty
+
+0.1.3:
+  - Decoding performance has been improved for Repeated fields
+  - A Foldable instance for Last has been added to Data.ProtocolBuffers.Orphans
+
+0.1.2:
+  - Enumerations can now be encoded
+
+0.1.1:
+  - Support empty messages, messages with no fields
+  - Packed field support has been improved
