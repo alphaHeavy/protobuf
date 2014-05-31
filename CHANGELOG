@@ -1,3 +1,6 @@
+0.2.0.2:
+  - Export {get,put}Varint* from Data.ProtocolBuffers.Internal
+
 0.2.0.1:
   - Dropped ghc-prim dependency, what we need is now exported from base
   - Added this CHANGELOG
