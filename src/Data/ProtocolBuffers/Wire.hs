@@ -18,6 +18,7 @@ module Data.ProtocolBuffers.Wire
   , getVarintPrefixedBS
   , putVarSInt
   , putVarUInt
+  , putVarintPrefixedBS
   , zzEncode32
   , zzEncode64
   , zzDecode32
@@ -61,6 +62,9 @@ data WireField
 getVarintPrefixedBS :: Get ByteString
 getVarintPrefixedBS = getBytes =<< getVarInt
 
+putVarintPrefixedBS :: ByteString -> Put
+putVarintPrefixedBS bs = putVarUInt (B.length bs) >> putByteString bs
+
 getWireField :: Get WireField
 getWireField = do
   wireTag <- getVarInt
@@ -77,7 +81,7 @@ getWireField = do
 putWireField :: WireField -> Put
 putWireField (VarintField    t val) = putWireTag t 0 >> putVarUInt val
 putWireField (Fixed64Field   t val) = putWireTag t 1 >> putWord64le val
-putWireField (DelimitedField t val) = putWireTag t 2 >> putVarUInt (B.length val) >> putByteString val
+putWireField (DelimitedField t val) = putWireTag t 2 >> putVarintPrefixedBS val
 putWireField (StartField     t    ) = putWireTag t 3
 putWireField (EndField       t    ) = putWireTag t 4
 putWireField (Fixed32Field   t val) = putWireTag t 5 >> putWord32le val
