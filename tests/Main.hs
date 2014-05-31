@@ -199,25 +199,25 @@ prop_wire _ = label ("prop_wire :: " ++ show (typeOf (undefined :: a))) $ do
     Right val' -> return $ val == val'
     Left err   -> fail err
 
-prop_generic :: (Arbitrary WireField) => Gen Prop
+prop_generic :: (Arbitrary WireField) => Gen Property
 prop_generic = do
   msg <- HashMap.fromListWith (++) . fmap (\ c -> (wireFieldTag c, [c])) <$> listOf1 arbitrary
-  prop_roundtrip msg
+  prop_roundtrip_msg msg
 
-prop_generic_length_prefixed :: (Arbitrary WireField) => Gen Prop
+prop_generic_length_prefixed :: (Arbitrary WireField) => Gen Property
 prop_generic_length_prefixed = do
   msg <- HashMap.fromListWith (++) . fmap (\ c -> (wireFieldTag c, [c])) <$> listOf1 arbitrary
   let bs = runPut $ encodeLengthPrefixedMessage (msg :: HashMap Tag [WireField])
   case runGet decodeLengthPrefixedMessage bs of
-    Right msg' -> unProperty $ counterexample "foo" $ msg == msg'
+    Right msg' -> return $ counterexample "foo" $ msg == msg'
     Left err   -> fail err
 
-prop_roundtrip :: (Eq a, Encode a, Decode a) => a -> Gen Prop
-prop_roundtrip msg = do
+prop_roundtrip_msg :: (Eq a, Encode a, Decode a) => a -> Gen Property
+prop_roundtrip_msg msg = do
   let bs = runPut $ encodeMessage msg
   case runGet decodeMessage bs of
-    Right msg' -> unProperty $ property $ msg == msg'
-    Left err   -> unProperty $ property $ False -- TODO Find how to create a failure with `err`
+    Right msg' -> return . property $ msg == msg'
+    Left err   -> fail err
 
 prop_varint_prefixed_bytestring :: Gen Property
 prop_varint_prefixed_bytestring = do
@@ -277,7 +277,7 @@ prop_req_out_of_range _ = MkProperty $ do
 prop_req :: forall a . (Arbitrary (Value a), Eq a, EncodeWire a, DecodeWire a, Typeable a) => Proxy a -> Property
 prop_req _ = label ("prop_req :: " ++ show (typeOf (undefined :: a))) $ do
   val <- Just <$> arbitrary
-  prop_req_reify (val :: Maybe (Value a)) prop_roundtrip
+  prop_req_reify (val :: Maybe (Value a)) prop_roundtrip_msg
 
 prop_repeated_reify :: forall a r . [a] -> (forall n . KnownNat n => RepeatedValue n a -> Gen r) -> Gen r
 prop_repeated_reify a f = prop_reify_valid_tag g where
@@ -287,7 +287,7 @@ prop_repeated_reify a f = prop_reify_valid_tag g where
 prop_repeated :: forall a . (Arbitrary a, Eq a, EncodeWire a, DecodeWire a, Typeable a) => Proxy a -> Property
 prop_repeated _ = label ("prop_repeated :: " ++ show (typeOf (undefined :: a))) $ do
   val <- arbitrary
-  prop_repeated_reify (val :: [a]) prop_roundtrip
+  prop_repeated_reify (val :: [a]) prop_roundtrip_msg
 
 prop_opt_reify :: forall a r . Maybe a -> (forall n . KnownNat n => OptionalValue n a -> Gen r) -> Gen r
 prop_opt_reify a f = prop_reify_valid_tag g where
@@ -297,7 +297,7 @@ prop_opt_reify a f = prop_reify_valid_tag g where
 prop_opt :: forall a . (Arbitrary a, Eq a, EncodeWire a, DecodeWire a, Typeable a) => Proxy a -> Property
 prop_opt _ = label ("prop_opt :: " ++ show (typeOf (undefined :: a))) $ do
   val <- arbitrary
-  prop_opt_reify (val :: Maybe a) prop_roundtrip
+  prop_opt_reify (val :: Maybe a) prop_roundtrip_msg
 
 -- implement the examples from https://developers.google.com/protocol-buffers/docs/encoding
 testSpecific :: (Eq a, Show a, Encode a, Decode a) => a -> B.ByteString -> IO ()
