@@ -33,7 +33,7 @@ import qualified Data.HashMap.Strict as HashMap
 import Data.Hex
 import Data.Int
 import Data.Monoid
-import Data.Serialize (runGet, runPut)
+import Data.Serialize (Get, Putter, runGet, runPut)
 import Data.Proxy
 import Data.Text (Text)
 import Data.Typeable
@@ -59,6 +59,7 @@ tests = testGroup "Root"
   --, testGroup "Tags Out of Range" tagsOutOfRangeTests
   , testProperty "Generic message coding" prop_generic
   , testProperty "Generic length prefixed message coding" prop_generic_length_prefixed
+  , testProperty "Varint prefixed bytestring" prop_varint_prefixed_bytestring
   , testCase "Google Reference Test1" test1
   , testCase "Google Reference Test2" test2
   , testCase "Google Reference Test3" test3
@@ -217,6 +218,18 @@ prop_roundtrip msg = do
   case runGet decodeMessage bs of
     Right msg' -> unProperty $ property $ msg == msg'
     Left err   -> unProperty $ property $ False -- TODO Find how to create a failure with `err`
+
+prop_varint_prefixed_bytestring :: Gen Property
+prop_varint_prefixed_bytestring = do
+  bs <- B.pack <$> arbitrary
+  prop_roundtrip_value getVarintPrefixedBS putVarintPrefixedBS bs
+
+prop_roundtrip_value :: (Eq a, Show a) => Get a -> Putter a -> a -> Gen Property
+prop_roundtrip_value get put val = do
+  let bs = runPut (put val)
+  case runGet get bs of
+    Right val' -> return $ val === val'
+    Left err   -> fail err
 
 prop_encode_fail :: Encode a => a -> Gen Prop
 prop_encode_fail msg = unProperty $ ioProperty $ do
