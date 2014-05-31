@@ -18,6 +18,7 @@ module Data.ProtocolBuffers.Wire
   , getVarintPrefixedBS
   , putVarSInt
   , putVarUInt
+  , putVarintPrefixedBS
   , zzEncode32
   , zzEncode64
   , zzDecode32
@@ -61,6 +62,9 @@ data WireField
 getVarintPrefixedBS :: Get ByteString
 getVarintPrefixedBS = getBytes =<< getVarInt
 
+putVarintPrefixedBS :: ByteString -> Put
+putVarintPrefixedBS bs = putVarUInt (B.length bs) >> putByteString bs
+
 getWireField :: Get WireField
 getWireField = do
   wireTag <- getVarInt
@@ -77,7 +81,7 @@ getWireField = do
 putWireField :: WireField -> Put
 putWireField (VarintField    t val) = putWireTag t 0 >> putVarUInt val
 putWireField (Fixed64Field   t val) = putWireTag t 1 >> putWord64le val
-putWireField (DelimitedField t val) = putWireTag t 2 >> putVarUInt (B.length val) >> putByteString val
+putWireField (DelimitedField t val) = putWireTag t 2 >> putVarintPrefixedBS val
 putWireField (StartField     t    ) = putWireTag t 3
 putWireField (EndField       t    ) = putWireTag t 4
 putWireField (Fixed32Field   t val) = putWireTag t 5 >> putWord32le val
@@ -96,7 +100,7 @@ getVarInt = go 0 0 where
       then go (n+7) (val .|. (fromIntegral (b .&. 0x7F) `shiftL` n))
       else return $! val .|. (fromIntegral b `shiftL` n)
 
--- This can be used on any Integral type and is needed for signed types; unsigned can use putVarUInt below.
+-- | This can be used on any Integral type and is needed for signed types; unsigned can use putVarUInt below.
 -- This has been changed to handle only up to 64 bit integral values (to match documentation).
 {-# INLINE putVarSInt #-}
 putVarSInt :: (Integral a, Bits a) => a -> Put
@@ -113,7 +117,7 @@ putVarSInt bIn =
     EQ -> putWord8 0
     GT -> putVarUInt bIn
 
--- This should be used on unsigned Integral types only (not checked)
+-- | This should be used on unsigned Integral types only (not checked)
 {-# INLINE putVarUInt #-}
 putVarUInt :: (Integral a, Bits a) => a -> Put
 putVarUInt i

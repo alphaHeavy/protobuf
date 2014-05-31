@@ -9,6 +9,8 @@ module Data.ProtocolBuffers.Internal
   , zzEncode64
   , zzDecode32
   , zzDecode64
+  , getVarintPrefixedBS, getVarInt
+  , putVarintPrefixedBS, putVarSInt, putVarUInt
   , Field(..)
   , Value(..)
   , Always(..)
