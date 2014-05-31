@@ -100,7 +100,7 @@ getVarInt = go 0 0 where
       then go (n+7) (val .|. (fromIntegral (b .&. 0x7F) `shiftL` n))
       else return $! val .|. (fromIntegral b `shiftL` n)
 
--- This can be used on any Integral type and is needed for signed types; unsigned can use putVarUInt below.
+-- | This can be used on any Integral type and is needed for signed types; unsigned can use putVarUInt below.
 -- This has been changed to handle only up to 64 bit integral values (to match documentation).
 {-# INLINE putVarSInt #-}
 putVarSInt :: (Integral a, Bits a) => a -> Put
@@ -117,7 +117,7 @@ putVarSInt bIn =
     EQ -> putWord8 0
     GT -> putVarUInt bIn
 
--- This should be used on unsigned Integral types only (not checked)
+-- | This should be used on unsigned Integral types only (not checked)
 {-# INLINE putVarUInt #-}
 putVarUInt :: (Integral a, Bits a) => a -> Put
 putVarUInt i
