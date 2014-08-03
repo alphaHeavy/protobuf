@@ -89,7 +89,7 @@ fieldDecode c msg =
   let tag = fromIntegral $ natVal (Proxy :: Proxy n)
   in case HashMap.lookup tag msg of
     Just val -> K1 . Field . c <$> foldMapM decodeWire val
-    Nothing  -> empty
+    Nothing  -> pure . K1 . Field $ c mempty
 
 instance (DecodeWire a, KnownNat n) => GDecode (K1 i (Field n (OptionalField (Last (Value a))))) where
   gdecode msg = fieldDecode Optional msg <|> pure (K1 mempty)
