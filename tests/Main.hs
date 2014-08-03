@@ -28,6 +28,7 @@ import qualified Data.ByteString as B
 import Data.ByteString.Char8 ()
 import Data.ProtocolBuffers as Pb
 import Data.ProtocolBuffers.Internal as Pb
+import Data.ProtocolBuffers.Orphans ()
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import Data.Hex
@@ -64,6 +65,9 @@ tests = testGroup "Root"
   , testCase "Google Reference Test2" test2
   , testCase "Google Reference Test3" test3
   , testCase "Google Reference Test4" test4
+  , testCase "Optional Enum Test5: Nothing" test5
+  , testCase "Optional Enum Test5: Just Test5A" test6
+  , testCase "Optional Enum Test5: Just Test5B" test7
   , testCase "Google WireFormatTest ZigZag" wireFormatZZ
   ]
 
@@ -344,6 +348,23 @@ instance Decode Test4
 test4 :: Assertion
 test4 = testSpecific msg =<< unhex "2206038e029ea705" where
   msg = Test4{test4_d = putField [3,270,86942]}
+
+data Test5Enum = Test5A | Test5B deriving (Eq, Show, Enum)
+data Test5 = Test5{test5_e :: Optional 5 (Enumeration Test5Enum)} deriving (Generic, Eq, Show)
+instance Encode Test5
+instance Decode Test5
+
+test5 :: Assertion
+test5 = testSpecific msg =<< unhex "" where
+  msg = Test5{test5_e = putField Nothing}
+
+test6 :: Assertion
+test6 = testSpecific msg =<< unhex "2800" where
+  msg = Test5{test5_e = putField $ Just Test5A }
+
+test7 :: Assertion
+test7 = testSpecific msg =<< unhex "2801" where
+  msg = Test5{test5_e = putField $ Just Test5B }
 
 -- some from http://code.google.com/p/protobuf/source/browse/trunk/src/google/protobuf/wire_format_unittest.cc
 wireFormatZZ :: Assertion
