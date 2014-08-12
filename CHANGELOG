@@ -1,3 +1,6 @@
+0.2.0.3:
+  - Fix #11 "Missing optional enum in incoming message causes decodeMessage to fail"
+
 0.2.0.2:
   - Export {get,put}Varint* from Data.ProtocolBuffers.Internal
 
