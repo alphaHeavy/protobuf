@@ -203,12 +203,12 @@ prop_wire _ = label ("prop_wire :: " ++ show (typeOf (undefined :: a))) $ do
     Right val' -> return $ val == val'
     Left err   -> fail err
 
-prop_generic :: (Arbitrary WireField) => Gen Property
+prop_generic :: Gen Property
 prop_generic = do
   msg <- HashMap.fromListWith (++) . fmap (\ c -> (wireFieldTag c, [c])) <$> listOf1 arbitrary
   prop_roundtrip_msg msg
 
-prop_generic_length_prefixed :: (Arbitrary WireField) => Gen Property
+prop_generic_length_prefixed :: Gen Property
 prop_generic_length_prefixed = do
   msg <- HashMap.fromListWith (++) . fmap (\ c -> (wireFieldTag c, [c])) <$> listOf1 arbitrary
   let bs = runPut $ encodeLengthPrefixedMessage (msg :: HashMap Tag [WireField])
