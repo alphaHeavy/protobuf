@@ -373,41 +373,41 @@ wireFormatZZ = do
   assert $ 1 == zzEncode32 (-1)
   assert $ 2 == zzEncode32   1
   assert $ 3 == zzEncode32 (-2)
-  assert $ 0x7FFFFFFE == zzEncode32 0x3FFFFFFF
-  assert $ 0x7FFFFFFF == zzEncode32 0xC0000000
-  assert $ 0xFFFFFFFE == zzEncode32 0x7FFFFFFF
-  assert $ 0xFFFFFFFF == zzEncode32 0x80000000
+  assert $ 0x7FFFFFFE == zzEncode32 (fromIntegral 0x3FFFFFFF)
+  assert $ 0x7FFFFFFF == zzEncode32 (fromIntegral 0xC0000000)
+  assert $ 0xFFFFFFFE == zzEncode32 (fromIntegral 0x7FFFFFFF)
+  assert $ 0xFFFFFFFF == zzEncode32 (fromIntegral 0x80000000)
 
   assert $   0  == zzDecode32 0
   assert $ (-1) == zzDecode32 1
   assert $   1  == zzDecode32 2
   assert $ (-2) == zzDecode32 3
-  assert $ 0x3FFFFFFF == zzDecode32 0x7FFFFFFE
-  assert $ 0xC0000000 == zzDecode32 0x7FFFFFFF
-  assert $ 0x7FFFFFFF == zzDecode32 0xFFFFFFFE
-  assert $ 0x80000000 == zzDecode32 0xFFFFFFFF
+  assert $ fromIntegral 0x3FFFFFFF == zzDecode32 0x7FFFFFFE
+  assert $ fromIntegral 0xC0000000 == zzDecode32 0x7FFFFFFF
+  assert $ fromIntegral 0x7FFFFFFF == zzDecode32 0xFFFFFFFE
+  assert $ fromIntegral 0x80000000 == zzDecode32 0xFFFFFFFF
 
   assert $ 0 == zzEncode64   0
   assert $ 1 == zzEncode64 (-1)
   assert $ 2 == zzEncode64   1
   assert $ 3 == zzEncode64 (-2)
-  assert $ 0x000000007FFFFFFE == zzEncode64 0x000000003FFFFFFF
-  assert $ 0x000000007FFFFFFF == zzEncode64 0xFFFFFFFFC0000000
-  assert $ 0x00000000FFFFFFFE == zzEncode64 0x000000007FFFFFFF
-  assert $ 0x00000000FFFFFFFF == zzEncode64 0xFFFFFFFF80000000
-  assert $ 0xFFFFFFFFFFFFFFFE == zzEncode64 0x7FFFFFFFFFFFFFFF
-  assert $ 0xFFFFFFFFFFFFFFFF == zzEncode64 0x8000000000000000
+  assert $ 0x000000007FFFFFFE == zzEncode64 (fromIntegral 0x000000003FFFFFFF)
+  assert $ 0x000000007FFFFFFF == zzEncode64 (fromIntegral 0xFFFFFFFFC0000000)
+  assert $ 0x00000000FFFFFFFE == zzEncode64 (fromIntegral 0x000000007FFFFFFF)
+  assert $ 0x00000000FFFFFFFF == zzEncode64 (fromIntegral 0xFFFFFFFF80000000)
+  assert $ 0xFFFFFFFFFFFFFFFE == zzEncode64 (fromIntegral 0x7FFFFFFFFFFFFFFF)
+  assert $ 0xFFFFFFFFFFFFFFFF == zzEncode64 (fromIntegral 0x8000000000000000)
 
   assert $   0  == zzDecode64 0
   assert $ (-1) == zzDecode64 1
   assert $   1  == zzDecode64 2
   assert $ (-2) == zzDecode64 3
-  assert $ 0x000000003FFFFFFF == zzDecode64 0x000000007FFFFFFE
-  assert $ 0xFFFFFFFFC0000000 == zzDecode64 0x000000007FFFFFFF
-  assert $ 0x000000007FFFFFFF == zzDecode64 0x00000000FFFFFFFE
-  assert $ 0xFFFFFFFF80000000 == zzDecode64 0x00000000FFFFFFFF
-  assert $ 0x7FFFFFFFFFFFFFFF == zzDecode64 0xFFFFFFFFFFFFFFFE
-  assert $ 0x8000000000000000 == zzDecode64 0xFFFFFFFFFFFFFFFF
+  assert $ fromIntegral 0x000000003FFFFFFF == zzDecode64 0x000000007FFFFFFE
+  assert $ fromIntegral 0xFFFFFFFFC0000000 == zzDecode64 0x000000007FFFFFFF
+  assert $ fromIntegral 0x000000007FFFFFFF == zzDecode64 0x00000000FFFFFFFE
+  assert $ fromIntegral 0xFFFFFFFF80000000 == zzDecode64 0x00000000FFFFFFFF
+  assert $ fromIntegral 0x7FFFFFFFFFFFFFFF == zzDecode64 0xFFFFFFFFFFFFFFFE
+  assert $ fromIntegral 0x8000000000000000 == zzDecode64 0xFFFFFFFFFFFFFFFF
 
   -- these tests are already covered by QuickCheck properties:
   -- Some easier-to-verify round-trip tests.  The inputs (other than 0, 1, -1)
