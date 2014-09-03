@@ -1,5 +1,5 @@
 name:                protobuf
-version:             0.2.0.3
+version:             0.2.0.4
 synopsis:            Google Protocol Buffers via GHC.Generics
 description:
   Google Protocol Buffers via GHC.Generics.
