@@ -9,6 +9,7 @@ module Data.ProtocolBuffers.Encode
   ( Encode(..)
   , encodeMessage
   , encodeLengthPrefixedMessage
+  , GEncode
   ) where
 
 import qualified Data.ByteString as B

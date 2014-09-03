@@ -21,8 +21,13 @@ module Data.ProtocolBuffers.Internal
   , PackedField(..)
   , PackedList(..)
   , Message(..)
+  , GDecode
+  , GEncode
+  , GMessageMonoid
   ) where
 
+import Data.ProtocolBuffers.Decode
+import Data.ProtocolBuffers.Encode
 import Data.ProtocolBuffers.Message
 import Data.ProtocolBuffers.Types
 import Data.ProtocolBuffers.Wire

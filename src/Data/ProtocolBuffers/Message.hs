@@ -11,6 +11,7 @@
 
 module Data.ProtocolBuffers.Message
   ( Message(..)
+  , GMessageMonoid
   ) where
 
 import Control.Applicative

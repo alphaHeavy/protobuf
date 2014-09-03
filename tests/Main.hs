@@ -18,7 +18,7 @@ import Test.Tasty
 import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck
 
-import GHC.Generics (Generic)
+import GHC.Generics
 import GHC.TypeLits
 
 import Control.Applicative
@@ -33,6 +33,8 @@ import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import Data.Hex
 import Data.Int
+import Data.IntSet (IntSet)
+import qualified Data.IntSet as IntSet
 import Data.Monoid
 import Data.Serialize (Get, Putter, runGet, runPut)
 import Data.Proxy
@@ -61,6 +63,7 @@ tests = testGroup "Root"
   , testProperty "Generic message coding" prop_generic
   , testProperty "Generic length prefixed message coding" prop_generic_length_prefixed
   , testProperty "Varint prefixed bytestring" prop_varint_prefixed_bytestring
+  , testProperty "Random message" prop_message
   , testCase "Google Reference Test1" test1
   , testCase "Google Reference Test2" test2
   , testCase "Google Reference Test3" test3
@@ -189,6 +192,97 @@ newtype RepeatedValue n a = RepeatedValue (Repeated n (Value a))
 
 instance (EncodeWire a, KnownNat n) => Encode (RepeatedValue n a)
 instance (DecodeWire a, KnownNat n) => Decode (RepeatedValue n a)
+
+arbitraryField :: forall r . Int -> (forall a . (Monoid a, GEncode (K1 R a), GDecode (K1 R a), Eq a, Show a) => a -> Gen r) -> Gen r
+arbitraryField i f =
+  case someNatVal (fromIntegral i) of
+    Nothing -> fail $ "someNatVal failed for " ++ show i
+    Just (SomeNat (n :: Proxy n)) -> do
+      flavor <- choose (1, 3)
+      case flavor :: Int of
+        0 -> do -- Packed
+          which <- choose (0, 5)
+          case which :: Int of
+            0 -> arbitrary >>= \ x -> f (putField x :: Packed n (Value Float))
+            1 -> arbitrary >>= \ x -> f (putField x :: Packed n (Value Double))
+            2 -> arbitrary >>= \ x -> f (putField x :: Packed n (Value Int32))
+            3 -> arbitrary >>= \ x -> f (putField x :: Packed n (Value Int64))
+            4 -> arbitrary >>= \ x -> f (putField x :: Packed n (Value Word32))
+            5 -> arbitrary >>= \ x -> f (putField x :: Packed n (Value Word64))
+            -- 6 -> arbitraryMessage (\ (msg :: msg) -> oneof [return (Just msg), return Nothing] >>= \ msg' -> f (putField msg' :: Optional n (Message msg)))
+            -- 7 -> arbitrary >>= \ x -> f (putField x :: Packed n (Value Text))
+            -- 8 -> arbitrary >>= \ x -> f (putField x :: Packed n (Value B.ByteString))
+        1 -> do -- Repeated
+          which <- choose (0, 5)
+          case which :: Int of
+            0 -> arbitrary >>= \ x -> f (putField x :: Repeated n (Value Float))
+            1 -> arbitrary >>= \ x -> f (putField x :: Repeated n (Value Double))
+            2 -> arbitrary >>= \ x -> f (putField x :: Repeated n (Value Int32))
+            3 -> arbitrary >>= \ x -> f (putField x :: Repeated n (Value Int64))
+            4 -> arbitrary >>= \ x -> f (putField x :: Repeated n (Value Word32))
+            5 -> arbitrary >>= \ x -> f (putField x :: Repeated n (Value Word64))
+            -- 6 -> arbitraryMessage (\ (msg :: msg) -> oneof [return (Just msg), return Nothing] >>= \ msg' -> f (putField msg' :: Optional n (Message msg)))
+            -- 7 -> arbitrary >>= \ x -> f (putField x :: Repeated n (Value Text))
+            -- 8 -> arbitrary >>= \ x -> f (putField x :: Repeated n (Value B.ByteString))
+
+        2 -> do -- Optional
+          which <- choose (0, 6)
+          case which :: Int of
+            0 -> arbitrary >>= \ x -> f (putField x :: Optional n (Value Float))
+            1 -> arbitrary >>= \ x -> f (putField x :: Optional n (Value Double))
+            2 -> arbitrary >>= \ x -> f (putField x :: Optional n (Value Int32))
+            3 -> arbitrary >>= \ x -> f (putField x :: Optional n (Value Int64))
+            4 -> arbitrary >>= \ x -> f (putField x :: Optional n (Value Word32))
+            5 -> arbitrary >>= \ x -> f (putField x :: Optional n (Value Word64))
+            6 -> arbitraryMessage (\ (msg :: msg) -> oneof [return (Just msg), return Nothing] >>= \ msg' -> f (putField msg' :: Optional n (Message msg)))
+            -- 7 -> arbitrary >>= \ x -> f (putField x :: Optional n (Value Text))
+            -- 8 -> arbitrary >>= \ x -> f (putField x :: Optional n (Value B.ByteString))
+        3 -> do -- Required
+          which <- choose (0, 6)
+          case which :: Int of
+            0 -> arbitrary >>= \ x -> f (putField x :: Required n (Value Float))
+            1 -> arbitrary >>= \ x -> f (putField x :: Required n (Value Double))
+            2 -> arbitrary >>= \ x -> f (putField x :: Required n (Value Int32))
+            3 -> arbitrary >>= \ x -> f (putField x :: Required n (Value Int64))
+            4 -> arbitrary >>= \ x -> f (putField x :: Required n (Value Word32))
+            5 -> arbitrary >>= \ x -> f (putField x :: Required n (Value Word64))
+            6 -> arbitraryMessage (\ (msg :: msg) -> f (putField msg :: Required n (Message msg)))
+            -- 7 -> arbitrary >>= \ x -> f (putField x :: Required n (Value Text))
+            -- 8 -> arbitrary >>= \ x -> f (putField x :: Required n (Value B.ByteString))
+
+data T1 a = T1 a deriving (Show, Eq,Generic)
+instance GEncode (K1 R a) => Encode (T1 a)
+instance GDecode (K1 R a) => Decode (T1 a)
+
+data T2 a b = T2 a b deriving (Show, Eq,Generic)
+instance (GEncode (K1 R a), GEncode (K1 R b)) => Encode (T2 a b)
+instance (GDecode (K1 R a), GDecode (K1 R b)) => Decode (T2 a b)
+
+data T3 a b c = T3 a b c deriving (Show, Eq,Generic)
+instance (GEncode (K1 R a), GEncode (K1 R b), GEncode (K1 R c)) => Encode (T3 a b c)
+instance (GDecode (K1 R a), GDecode (K1 R b), GDecode (K1 R c)) => Decode (T3 a b c)
+
+arbitraryMessage :: forall r . (forall a . (Encode a, Decode a, Generic a, GMessageMonoid (Rep a), Eq a, Show a) => a -> Gen r) -> Gen r
+arbitraryMessage f = do
+  fieldCount <- choose (1, 3)
+  xs <- fieldTags fieldCount
+  case fieldCount of
+    1 -> arbitraryField (xs !! 0) (\ f1 -> f (T1 f1))
+    2 -> arbitraryField (xs !! 0) (\ f1 -> arbitraryField (xs !! 1) (\ f2 -> f (T2 f1 f2)))
+    3 -> arbitraryField (xs !! 0) (\ f1 -> arbitraryField (xs !! 1) (\ f2 -> arbitraryField (xs !! 2) (\ f3 -> f (T3 f1 f2 f3))))
+
+fieldTags :: Int -> Gen [Int]
+fieldTags i = go IntSet.empty [] where
+  go xs ys
+    | IntSet.size xs >= i = return ys
+    | otherwise = do
+        next <- choose (0, 536870912)
+        if next `IntSet.member` xs
+          then go xs ys
+          else go (IntSet.insert next xs) (next:ys)
+
+prop_message :: Gen Property
+prop_message = arbitraryMessage prop_roundtrip_msg
 
 prop_wire :: forall a . (Eq a, Arbitrary a, EncodeWire a, DecodeWire a, Typeable a) => Proxy a -> Property
 prop_wire _ = label ("prop_wire :: " ++ show (typeOf (undefined :: a))) $ do
