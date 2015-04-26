@@ -19,6 +19,9 @@
 --import "Data.Text"
 --import "GHC.Generics" ('GHC.Generics.Generic')
 --import "GHC.TypeLits"
+--import "Data.Monoid"
+--import "Data.Serialize"
+--import "Data.Hex"  -- cabal install hex (for testing)
 --
 -- data Foo = Foo
 --   { field1 :: 'Required' 1 ('Value' 'Data.Int.Int64') -- ^ The last field with tag = 1
