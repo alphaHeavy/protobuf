@@ -12,20 +12,24 @@
 --
 -- @
 --{-\# LANGUAGE DeriveGeneric \#-}
+--{-\# LANGUAGE DataKinds     \#-}
 --
--- import "Data.Int"
+--import "Data.Int"
 --import "Data.ProtocolBuffers"
 --import "Data.Text"
 --import "GHC.Generics" ('GHC.Generics.Generic')
 --import "GHC.TypeLits"
+--import "Data.Monoid"
+--import "Data.Serialize"
+--import "Data.Hex"  -- cabal install hex (for testing)
 --
 -- data Foo = Foo
---   { field1 :: 'Required' '1' ('Value' 'Data.Int.Int64') -- ^ The last field with tag = 1
---   , field2 :: 'Optional' '2' ('Value' 'Data.Text.Text') -- ^ The last field with tag = 2
---   , field3 :: 'Repeated' '3' ('Value' 'Prelude.Bool') -- ^ All fields with tag = 3, ordering is preserved
+--   { field1 :: 'Required' 1 ('Value' 'Data.Int.Int64') -- ^ The last field with tag = 1
+--   , field2 :: 'Optional' 2 ('Value' 'Data.Text.Text') -- ^ The last field with tag = 2
+--   , field3 :: 'Repeated' 3 ('Value' 'Prelude.Bool')   -- ^ All fields with tag = 3, ordering is preserved
 --   } deriving ('GHC.Generics.Generic', 'Prelude.Show')
 --
--- instance 'Encode' Foo
+--instance 'Encode' Foo
 --instance 'Decode' Foo
 -- @
 --
