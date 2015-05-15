@@ -448,6 +448,11 @@ data Test5 = Test5{test5_e :: Optional 5 (Enumeration Test5Enum)} deriving (Gene
 instance Encode Test5
 instance Decode Test5
 
+data Test6Enum = Test6A | Test6B deriving (Eq, Show, Enum)
+data Test6 = Test6{test6_e :: Repeated 6 (Enumeration Test6Enum)} deriving (Generic, Eq, Show)
+instance Encode Test6
+instance Decode Test6
+
 test5 :: Assertion
 test5 = testSpecific msg =<< unhex "" where
   msg = Test5{test5_e = putField Nothing}

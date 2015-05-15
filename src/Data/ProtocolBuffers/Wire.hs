@@ -436,6 +436,11 @@ instance (Foldable f, Enum a) => EncodeWire (f (Enumeration a)) where
     c :: a -> Int32
     c = fromIntegral . fromEnum
 
+instance Enum a => DecodeWire (Enumeration a) where
+  decodeWire f = c <$> decodeWire f where
+    c :: Int32 -> Enumeration a
+    c = Enumeration . toEnum . fromIntegral
+
 instance Enum a => DecodeWire (Maybe (Enumeration a)) where
   decodeWire f = c <$> decodeWire f where
     c :: Int32 -> Maybe (Enumeration a)
