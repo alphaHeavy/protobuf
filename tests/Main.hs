@@ -71,6 +71,14 @@ tests = testGroup "Root"
   , testCase "Optional Enum Test5: Nothing" test5
   , testCase "Optional Enum Test5: Just Test5A" test6
   , testCase "Optional Enum Test5: Just Test5B" test7
+  , testCase "Repeated Enum Test6: []" test8
+  , testCase "Repeated Enum Test6: [Test6A]" test9
+  , testCase "Repeated Enum Test6: [Test6A, Test6B]" test10
+  , testCase "Repeated Enum Test6: [Test6A, Test6A]" test11
+  , testCase "Repeated Enum Test6: [Test6A, Test6B, Test6A]" test12
+  , testCase "Repeated Enum Test7: []" test13
+  , testCase "Repeated Enum Test7: [Test7]" test14
+  , testCase "Repeated Enum Test7: [Test7, Test7]" test15
   , testCase "Google WireFormatTest ZigZag" wireFormatZZ
   ]
 
@@ -347,7 +355,7 @@ prop_req_reify_out_of_range a f = do
   -- is also recommended since these are encoded as varints which have
   -- fairly high overhead for negative tags
   n <- choose (536870912, toInteger $ (maxBound :: Int))
-  case someNatVal n of 
+  case someNatVal n of
     Just (SomeNat x) -> g x
 
 prop_reify_valid_tag :: forall r . (forall n . KnownNat n => Proxy n -> Gen r) -> Gen r
@@ -359,7 +367,7 @@ prop_reify_valid_tag f = do
   -- is also recommended since these are encoded as varints which have
   -- fairly high overhead for negative tags
   n <- choose (0, 536870911)
-  case someNatVal n of 
+  case someNatVal n of
     Just (SomeNat x) -> f x
 
 prop_req_reify :: forall a r . a -> (forall n . KnownNat n => RequiredValue n a -> Gen r) -> Gen r
@@ -453,6 +461,11 @@ data Test6 = Test6{test6_e :: Repeated 6 (Enumeration Test6Enum)} deriving (Gene
 instance Encode Test6
 instance Decode Test6
 
+data Test7Enum = Test7A deriving (Eq, Show, Enum)
+data Test7 = Test7{test7_e :: Repeated 7 (Enumeration Test7Enum)} deriving (Generic, Eq, Show)
+instance Encode Test7
+instance Decode Test7
+
 test5 :: Assertion
 test5 = testSpecific msg =<< unhex "" where
   msg = Test5{test5_e = putField Nothing}
@@ -464,6 +477,38 @@ test6 = testSpecific msg =<< unhex "2800" where
 test7 :: Assertion
 test7 = testSpecific msg =<< unhex "2801" where
   msg = Test5{test5_e = putField $ Just Test5B }
+
+test8 :: Assertion
+test8 = testSpecific msg =<< unhex "" where
+  msg = Test6{test6_e = putField $ [] }
+
+test9 :: Assertion
+test9 = testSpecific msg =<< unhex "3000" where
+  msg = Test6{test6_e = putField $ [Test6A] }
+
+test10 :: Assertion
+test10 = testSpecific msg =<< unhex "30003001" where
+  msg = Test6{test6_e = putField $ [Test6A, Test6B]}
+
+test11 :: Assertion
+test11 = testSpecific msg =<< unhex "30003000" where
+  msg = Test6{test6_e = putField $ [Test6A, Test6A]}
+
+test12 :: Assertion
+test12 = testSpecific msg =<< unhex "300030013000" where
+  msg = Test6{test6_e = putField $ [Test6A, Test6B, Test6A]}
+
+test13 :: Assertion
+test13 = testSpecific msg =<< unhex "" where
+  msg = Test7{test7_e = putField $ [] }
+
+test14 :: Assertion
+test14 = testSpecific msg =<< unhex "3800" where
+  msg = Test7{test7_e = putField $ [Test7A] }
+
+test15 :: Assertion
+test15 = testSpecific msg =<< unhex "38003800" where
+  msg = Test7{test7_e = putField $ [Test7A, Test7A] }
 
 -- some from http://code.google.com/p/protobuf/source/browse/trunk/src/google/protobuf/wire_format_unittest.cc
 wireFormatZZ :: Assertion
