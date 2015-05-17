@@ -1,8 +1,11 @@
+0.2.1.0:
+  - Fix #17: Repeated n (Enumeration a) difficulty
+
 0.2.0.4:
-  - Fix #13 "Getting the error "Always is not a Monoid"
+  - Fix #13: Getting the error "Always is not a Monoid
 
 0.2.0.3:
-  - Fix #11 "Missing optional enum in incoming message causes decodeMessage to fail"
+  - Fix #11: Missing optional enum in incoming message causes decodeMessage to fail
 
 0.2.0.2:
   - Export {get,put}Varint* from Data.ProtocolBuffers.Internal
