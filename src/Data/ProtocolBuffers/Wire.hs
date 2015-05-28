@@ -29,17 +29,17 @@ import Control.Applicative
 import Data.Bits
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as LBS
 import Data.Foldable
 import Data.Int
 import Data.Monoid
-import Data.Serialize.Get
-import Data.Serialize.IEEE754
-import Data.Serialize.Put
+import Data.Binary.Get
+import Data.Binary.IEEE754
+import Data.Binary.Put
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import Data.Typeable
 import Data.Word
-import Data.Binary.IEEE754 (wordToDouble, wordToFloat)
 
 import Data.ProtocolBuffers.Types
 
@@ -60,7 +60,7 @@ data WireField
     deriving (Eq, Ord, Show, Typeable)
 
 getVarintPrefixedBS :: Get ByteString
-getVarintPrefixedBS = getBytes =<< getVarInt
+getVarintPrefixedBS = getByteString =<< getVarInt
 
 putVarintPrefixedBS :: ByteString -> Put
 putVarintPrefixedBS bs = putVarUInt (B.length bs) >> putByteString bs
@@ -259,6 +259,9 @@ instance DecodeWire Double where
   decodeWire (Fixed64Field _ val) = pure $ wordToDouble val
   decodeWire _ = empty
 
+instance EncodeWire LBS.ByteString where
+  encodeWire t val = putWireTag t 2 >> putVarUInt (LBS.length val) >> putLazyByteString val
+
 instance EncodeWire ByteString where
   encodeWire t val = putWireTag t 2 >> putVarUInt (B.length val) >> putByteString val
 
@@ -284,10 +287,7 @@ instance DecodeWire T.Text where
 
 decodePackedList :: Get a -> WireField -> Get [a]
 {-# INLINE decodePackedList #-}
-decodePackedList g (DelimitedField _ bs) =
-  case runGet (many g) bs of
-    Right val -> return val
-    Left err  -> fail err
+decodePackedList g (DelimitedField _ bs) = return $ runGet (many g) (LBS.fromStrict bs)
 decodePackedList _ _ = empty
 
 -- |
@@ -296,7 +296,7 @@ encodePackedList :: Tag -> Put -> Put
 {-# INLINE encodePackedList #-}
 encodePackedList t p
   | bs <- runPut p
-  , not (B.null bs) = encodeWire t bs
+  , not (LBS.null bs) = encodeWire t (LBS.toStrict bs)
   | otherwise = pure ()
 
 instance EncodeWire (PackedList (Value Int32)) where

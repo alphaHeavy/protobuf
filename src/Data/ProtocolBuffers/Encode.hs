@@ -12,18 +12,18 @@ module Data.ProtocolBuffers.Encode
   , GEncode
   ) where
 
-import qualified Data.ByteString as B
 import Data.Foldable
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import Data.Proxy
-import Data.Serialize.Put
+import Data.Binary.Put
 
 import GHC.Generics
 import GHC.TypeLits
 
 import Data.ProtocolBuffers.Types
 import Data.ProtocolBuffers.Wire
+import qualified Data.ByteString.Lazy as LBS
 
 -- |
 -- Encode a Protocol Buffers message.
@@ -36,8 +36,8 @@ encodeLengthPrefixedMessage :: Encode a => a -> Put
 {-# INLINE encodeLengthPrefixedMessage #-}
 encodeLengthPrefixedMessage msg = do
   let msg' = runPut $ encodeMessage msg
-  putVarUInt $ B.length msg'
-  putByteString msg'
+  putVarUInt $ LBS.length msg'
+  putLazyByteString msg'
 
 class Encode (a :: *) where
   encode :: a -> Put

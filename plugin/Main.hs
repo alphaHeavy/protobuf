@@ -13,7 +13,7 @@ import Data.Int
 import Data.Monoid
 import Data.ProtocolBuffers
 import Data.ProtocolBuffers.Internal
-import Data.Serialize
+import Data.Binary
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TextL

@@ -36,11 +36,14 @@ import Data.Int
 import Data.IntSet (IntSet)
 import qualified Data.IntSet as IntSet
 import Data.Monoid
-import Data.Serialize (Get, Putter, runGet, runPut)
+import Data.Binary.Get (Get, runGet)
+import Data.Binary.Put (Put, runPut)
 import Data.Proxy
 import Data.Text (Text)
 import Data.Typeable
 import Data.Word
+import qualified Data.ByteString.Lazy as LBS
+import Data.Binary.Get (runGetOrFail)
 
 main :: IO ()
 main = defaultMain tests
@@ -301,9 +304,9 @@ prop_wire _ = label ("prop_wire :: " ++ show (typeOf (undefined :: a))) $ do
         field <- getWireField
         guard $ tag == wireFieldTag field
         decodeWire field
-  case runGet dec bs of
-    Right val' -> return $ val == val'
-    Left err   -> fail err
+  case runGetOrFail dec bs of
+    Right (_, _, val') -> return $ val == val'
+    Left (_, _, err)   -> fail err
 
 prop_generic :: Gen Property
 prop_generic = do
@@ -314,33 +317,31 @@ prop_generic_length_prefixed :: Gen Property
 prop_generic_length_prefixed = do
   msg <- HashMap.fromListWith (++) . fmap (\ c -> (wireFieldTag c, [c])) <$> listOf1 arbitrary
   let bs = runPut $ encodeLengthPrefixedMessage (msg :: HashMap Tag [WireField])
-  case runGet decodeLengthPrefixedMessage bs of
-    Right msg' -> return $ counterexample "foo" $ msg == msg'
-    Left err   -> fail err
+  case runGetOrFail decodeLengthPrefixedMessage bs of
+    Right (_, _, msg') -> return $ counterexample "foo" $ msg == msg'
+    Left (_, _, err)   -> fail err
 
 prop_roundtrip_msg :: (Eq a, Encode a, Decode a) => a -> Gen Property
 prop_roundtrip_msg msg = do
   let bs = runPut $ encodeMessage msg
   case runGet decodeMessage bs of
-    Right msg' -> return . property $ msg == msg'
-    Left err   -> fail err
+    msg' -> return . property $ msg == msg'
 
 prop_varint_prefixed_bytestring :: Gen Property
 prop_varint_prefixed_bytestring = do
   bs <- B.pack <$> arbitrary
   prop_roundtrip_value getVarintPrefixedBS putVarintPrefixedBS bs
 
-prop_roundtrip_value :: (Eq a, Show a) => Get a -> Putter a -> a -> Gen Property
+prop_roundtrip_value :: (Eq a, Show a) => Get a -> (a -> Put) -> a -> Gen Property
 prop_roundtrip_value get put val = do
   let bs = runPut (put val)
   case runGet get bs of
-    Right val' -> return $ val === val'
-    Left err   -> fail err
+    val' -> return $ val === val'
 
 prop_encode_fail :: Encode a => a -> Gen Prop
 prop_encode_fail msg = unProperty $ ioProperty $ do
   res <- try . evaluate . runPut $ encodeMessage msg
-  return $ case res :: Either SomeException B.ByteString of
+  return $ case res :: Either SomeException LBS.ByteString of
     Left  _ -> True
     Right _ -> False
 
@@ -409,11 +410,11 @@ prop_opt _ = label ("prop_opt :: " ++ show (typeOf (undefined :: a))) $ do
 testSpecific :: (Eq a, Show a, Encode a, Decode a) => a -> B.ByteString -> IO ()
 testSpecific msg ref = do
   let bs = runPut $ encodeMessage msg
-  assertEqual "Encoded message mismatch" bs ref
+  assertEqual "Encoded message mismatch" (LBS.toStrict bs) ref
 
-  case runGet decodeMessage bs of
-    Right msg' -> assertEqual "Decoded message mismatch" msg msg'
-    Left err   -> assertFailure err
+  case runGetOrFail decodeMessage bs of
+    Right (_, _, msg') -> assertEqual "Decoded message mismatch" msg msg'
+    Left (_, _, err)   -> assertFailure err
 
 data Test1 = Test1{test1_a :: Required 1 (Value Int32)} deriving (Generic)
 deriving instance Eq Test1

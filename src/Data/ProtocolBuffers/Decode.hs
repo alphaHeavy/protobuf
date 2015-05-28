@@ -16,7 +16,6 @@ module Data.ProtocolBuffers.Decode
 
 import Control.Applicative
 import Control.Monad
-import qualified Data.ByteString as B
 import Data.Foldable
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
@@ -24,7 +23,7 @@ import Data.Int (Int32, Int64)
 import Data.Maybe (fromMaybe)
 import Data.Monoid
 import Data.Proxy
-import Data.Serialize.Get
+import Data.Binary.Get
 import Data.Traversable (traverse)
 
 import GHC.Generics
@@ -32,6 +31,7 @@ import GHC.TypeLits
 
 import Data.ProtocolBuffers.Types
 import Data.ProtocolBuffers.Wire
+import qualified Data.ByteString.Lazy as LBS
 
 -- |
 -- Decode a Protocol Buffers message.
@@ -51,12 +51,12 @@ decodeLengthPrefixedMessage :: Decode a => Get a
 {-# INLINE decodeLengthPrefixedMessage #-}
 decodeLengthPrefixedMessage = do
   len :: Int64 <- getVarInt
-  bs <- getBytes $ fromIntegral len
-  case runGetState decodeMessage bs 0 of
-    Right (val, bs')
-      | B.null bs' -> return val
-      | otherwise  -> fail $ "Unparsed bytes leftover in decodeLengthPrefixedMessage: " ++ show (B.length bs')
-    Left err  -> fail err
+  bs <- getByteString $ fromIntegral len
+  case runGetOrFail decodeMessage (LBS.fromStrict bs) of
+   Right (bs', _, val)
+      | LBS.null bs' -> return val
+      | otherwise  -> fail $ "Unparsed bytes leftover in decodeLengthPrefixedMessage: " ++ show (LBS.length bs')
+   Left (_, _, err) -> fail err
 
 class Decode (a :: *) where
   decode :: HashMap Tag [WireField] -> Get a

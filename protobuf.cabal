@@ -47,7 +47,7 @@ library
   build-depends:
     base                       >= 4.7 && < 5,
     bytestring                 >= 0.9,
-    cereal                     >= 0.3,
+    binary                     >= 0.7,
     data-binary-ieee754        >= 0.4,
     deepseq                    >= 1.1,
     mtl                        == 2.*,
@@ -89,7 +89,7 @@ test-suite protobuf-test
   build-depends:
     base                       >= 4.7 && < 5,
     bytestring,
-    cereal,
+    binary,
     containers,
     hex,
     mtl,

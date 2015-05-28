@@ -18,8 +18,8 @@ import Control.Applicative
 import Control.DeepSeq (NFData(..))
 import Data.Foldable
 import Data.Monoid
-import Data.Serialize.Get
-import Data.Serialize.Put
+import Data.Binary.Get
+import Data.Binary.Put
 import Data.Traversable
 
 import GHC.Generics
@@ -29,6 +29,7 @@ import Data.ProtocolBuffers.Decode
 import Data.ProtocolBuffers.Encode
 import Data.ProtocolBuffers.Types
 import Data.ProtocolBuffers.Wire
+import qualified Data.ByteString.Lazy as LBS
 
 -- |
 -- The way to embed a message within another message.
@@ -160,10 +161,7 @@ instance (Foldable f, Encode m) => EncodeWire (f (Message m)) where
     traverse_ (encodeWire t . runPut . encode . runMessage)
 
 instance Decode m => DecodeWire (Message m) where
-  decodeWire (DelimitedField _ bs) =
-    case runGet decodeMessage bs of
-      Right val -> pure $ Message val
-      Left err  -> fail $ "Embedded message decoding failed: " ++ show err
+  decodeWire (DelimitedField _ bs) = pure $ Message $ runGet decodeMessage $ LBS.fromStrict bs
   decodeWire _ = empty
 
 -- | Iso: @ 'FieldType' ('Required' n ('Message' a)) = a @

@@ -20,7 +20,7 @@
 --import "GHC.Generics" ('GHC.Generics.Generic')
 --import "GHC.TypeLits"
 --import "Data.Monoid"
---import "Data.Serialize"
+--import "Data.Binary"
 --import "Data.Hex"  -- cabal install hex (for testing)
 --
 -- data Foo = Foo
@@ -41,15 +41,15 @@
 --
 -- >>> let msg = Foo{field1 = putField 42, field2 = mempty, field3 = putField [True, False]}
 --
--- To serialize a message first convert it into a 'Data.Serialize.Put' by way of 'encodeMessage'
--- and then to a 'Data.ByteString.ByteString' by using 'Data.Serialize.runPut'. Lazy
--- 'Data.ByteString.Lazy.ByteString' serialization is done with 'Data.Serialize.runPutLazy'.
+-- To serialize a message first convert it into a 'Data.Binary.Put' by way of 'encodeMessage'
+-- and then to a 'Data.ByteString.ByteString' by using 'Data.Binary.runPut'. Lazy
+-- 'Data.ByteString.Lazy.ByteString' serialization is done with 'Data.Binary.runPutLazy'.
 --
 -- >>> fmap hex runPut $ encodeMessage msg
 -- "082A18011800"
 --
 -- Decoding is done with the inverse functions: 'decodeMessage'
--- and 'Data.Serialize.runGet', or 'Data.Serialize.runGetLazy'.
+-- and 'Data.Binary.runGet'.
 --
 -- >>> runGet decodeMessage =<< unhex "082A18011800" :: Either String Foo
 -- Right
