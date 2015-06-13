@@ -157,8 +157,7 @@ type instance Optional n (Message a) = Field n (OptionalField (Maybe (Message a)
 type instance Required n (Message a) = Field n (RequiredField (Always (Message a)))
 
 instance (Foldable f, Encode m) => EncodeWire (f (Message m)) where
-  encodeWire t =
-    traverse_ (encodeWire t . runPut . encode . runMessage)
+  encodeWire t = foldMap (encodeWire t . encode . runMessage)
 
 instance Decode m => DecodeWire (Message m) where
   decodeWire (DelimitedField _ bs) = pure $ Message $ runGet decodeMessage $ LBS.fromStrict bs

@@ -37,7 +37,7 @@ import Data.IntSet (IntSet)
 import qualified Data.IntSet as IntSet
 import Data.Monoid
 import Data.Binary.Get (Get, runGet)
-import Data.Binary.Put (Put, runPut)
+import Data.Binary.Builder (Builder, toLazyByteString)
 import Data.Proxy
 import Data.Text (Text)
 import Data.Typeable
@@ -299,7 +299,7 @@ prop_wire :: forall a . (Eq a, Arbitrary a, EncodeWire a, DecodeWire a, Typeable
 prop_wire _ = label ("prop_wire :: " ++ show (typeOf (undefined :: a))) $ do
   tag <- choose (0, 536870912)
   val <- arbitrary
-  let bs = runPut (encodeWire tag (val :: a))
+  let bs = toLazyByteString (encodeWire tag (val :: a))
       dec = do
         field <- getWireField
         guard $ tag == wireFieldTag field
@@ -316,14 +316,14 @@ prop_generic = do
 prop_generic_length_prefixed :: Gen Property
 prop_generic_length_prefixed = do
   msg <- HashMap.fromListWith (++) . fmap (\ c -> (wireFieldTag c, [c])) <$> listOf1 arbitrary
-  let bs = runPut $ encodeLengthPrefixedMessage (msg :: HashMap Tag [WireField])
+  let bs = toLazyByteString $ encodeLengthPrefixedMessage (msg :: HashMap Tag [WireField])
   case runGetOrFail decodeLengthPrefixedMessage bs of
     Right (_, _, msg') -> return $ counterexample "foo" $ msg == msg'
     Left (_, _, err)   -> fail err
 
 prop_roundtrip_msg :: (Eq a, Encode a, Decode a) => a -> Gen Property
 prop_roundtrip_msg msg = do
-  let bs = runPut $ encodeMessage msg
+  let bs = toLazyByteString $ encodeMessage msg
   case runGet decodeMessage bs of
     msg' -> return . property $ msg == msg'
 
@@ -332,15 +332,15 @@ prop_varint_prefixed_bytestring = do
   bs <- B.pack <$> arbitrary
   prop_roundtrip_value getVarintPrefixedBS putVarintPrefixedBS bs
 
-prop_roundtrip_value :: (Eq a, Show a) => Get a -> (a -> Put) -> a -> Gen Property
+prop_roundtrip_value :: (Eq a, Show a) => Get a -> (a -> Builder) -> a -> Gen Property
 prop_roundtrip_value get put val = do
-  let bs = runPut (put val)
+  let bs = toLazyByteString (put val)
   case runGet get bs of
     val' -> return $ val === val'
 
 prop_encode_fail :: Encode a => a -> Gen Prop
 prop_encode_fail msg = unProperty $ ioProperty $ do
-  res <- try . evaluate . runPut $ encodeMessage msg
+  res <- try . evaluate . toLazyByteString $ encodeMessage msg
   return $ case res :: Either SomeException LBS.ByteString of
     Left  _ -> True
     Right _ -> False
@@ -409,7 +409,7 @@ prop_opt _ = label ("prop_opt :: " ++ show (typeOf (undefined :: a))) $ do
 -- implement the examples from https://developers.google.com/protocol-buffers/docs/encoding
 testSpecific :: (Eq a, Show a, Encode a, Decode a) => a -> B.ByteString -> IO ()
 testSpecific msg ref = do
-  let bs = runPut $ encodeMessage msg
+  let bs = toLazyByteString $ encodeMessage msg
   assertEqual "Encoded message mismatch" (LBS.toStrict bs) ref
 
   case runGetOrFail decodeMessage bs of
