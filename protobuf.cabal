@@ -104,6 +104,26 @@ test-suite protobuf-test
     HUnit                      >= 1.2,
     QuickCheck                 >= 2.4
 
+
+benchmark bench
+  type: exitcode-stdio-1.0
+  hs-source-dirs: bench
+  main-is: Bench.hs
+  build-depends:
+    base,
+    criterion,
+    deepseq,
+    bytestring,
+    binary,
+    containers,
+    hex,
+    mtl,
+    protobuf,
+    tagged,
+    text,
+    unordered-containers
+  ghc-options:   -O2
+
 source-repository head
   type:     git
   location: https://github.com/alphaHeavy/protobuf.git
