@@ -16,7 +16,7 @@ import Data.Foldable
 import Data.HashMap.Strict (HashMap)
 import qualified Data.HashMap.Strict as HashMap
 import Data.Proxy
-import Data.Binary.Builder
+import Data.Binary.Builder.Sized
 import Data.Monoid
 
 import GHC.Generics

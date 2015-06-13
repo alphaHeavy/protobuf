@@ -37,6 +37,7 @@ library
     Data.ProtocolBuffers
     Data.ProtocolBuffers.Internal
     Data.ProtocolBuffers.Orphans
+    Data.Binary.Builder.Sized
   other-modules:
     Data.ProtocolBuffers.Decode
     Data.ProtocolBuffers.Encode

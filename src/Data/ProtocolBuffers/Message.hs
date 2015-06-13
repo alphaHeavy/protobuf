@@ -19,7 +19,6 @@ import Control.DeepSeq (NFData(..))
 import Data.Foldable
 import Data.Monoid
 import Data.Binary.Get
-import Data.Binary.Put
 import Data.Traversable
 
 import GHC.Generics

@@ -37,7 +37,7 @@ import Data.IntSet (IntSet)
 import qualified Data.IntSet as IntSet
 import Data.Monoid
 import Data.Binary.Get (Get, runGet)
-import Data.Binary.Builder (Builder, toLazyByteString)
+import Data.Binary.Builder.Sized (Builder, toLazyByteString)
 import Data.Proxy
 import Data.Text (Text)
 import Data.Typeable

@@ -35,7 +35,7 @@ import Data.Int
 import Data.Monoid
 import Data.Binary.Get
 import qualified Data.Binary.IEEE754 as F
-import Data.Binary.Builder hiding (empty)
+import Data.Binary.Builder.Sized hiding (empty)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import Data.Typeable
@@ -266,7 +266,7 @@ instance DecodeWire Double where
   decodeWire _ = empty
 
 instance EncodeWire Builder where
-  encodeWire t val = encodeWire t $ toLazyByteString val
+  encodeWire t val = putWireTag t 2 <> putVarUInt (size val) <> val
 
 instance EncodeWire LBS.ByteString where
   encodeWire t val = putWireTag t 2 <> putVarUInt (LBS.length val) <> fromLazyByteString val
