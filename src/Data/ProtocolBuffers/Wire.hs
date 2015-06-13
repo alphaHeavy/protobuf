@@ -269,10 +269,10 @@ instance EncodeWire Builder where
   encodeWire t val = putWireTag t 2 <> putVarUInt (size val) <> val
 
 instance EncodeWire LBS.ByteString where
-  encodeWire t val = putWireTag t 2 <> putVarUInt (LBS.length val) <> fromLazyByteString val
+  encodeWire t val = encodeWire t $ fromLazyByteString val
 
 instance EncodeWire ByteString where
-  encodeWire t val = putWireTag t 2 <> putVarUInt (B.length val) <> fromByteString val
+  encodeWire t val = encodeWire t $ fromByteString val
 
 instance DecodeWire ByteString where
   decodeWire (DelimitedField _ bs) = pure bs
@@ -303,10 +303,9 @@ decodePackedList _ _ = empty
 -- Empty lists are not written out
 encodePackedList :: Tag -> Builder -> Builder
 {-# INLINE encodePackedList #-}
-encodePackedList t p
-  | bs <- toLazyByteString p
-  , not (LBS.null bs) = encodeWire t (LBS.toStrict bs)
-  | otherwise = mempty
+encodePackedList t p = case size p of
+  0 -> mempty
+  _ -> encodeWire t p
 
 instance EncodeWire (PackedList (Value Int32)) where
   encodeWire t (PackedList xs) =

@@ -24,7 +24,6 @@ import GHC.TypeLits
 
 import Data.ProtocolBuffers.Types
 import Data.ProtocolBuffers.Wire
-import qualified Data.ByteString.Lazy as LBS
 
 -- |
 -- Encode a Protocol Buffers message.
@@ -35,9 +34,9 @@ encodeMessage = encode
 -- Encode a Protocol Buffers message prefixed with a varint encoded 32-bit integer describing it's length.
 encodeLengthPrefixedMessage :: Encode a => a -> Builder
 {-# INLINE encodeLengthPrefixedMessage #-}
-encodeLengthPrefixedMessage msg = (putVarUInt $ LBS.length msg') <> fromLazyByteString msg'
+encodeLengthPrefixedMessage msg = (putVarUInt $ size msg') <> msg'
   where
-    msg' = toLazyByteString $ encodeMessage msg
+    msg' = encodeMessage msg
 
 class Encode (a :: *) where
   encode :: a -> Builder
