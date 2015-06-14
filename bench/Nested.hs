@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleContexts     #-}
 {-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE StandaloneDeriving #-}
 module Nested where
 
 import           Control.DeepSeq             (NFData)
@@ -25,12 +26,15 @@ instance (GEncode (K1 R (Required 2 v)), GEncode (K1 R (Required 1 k))) => Encod
 instance (GDecode (K1 R (Required 2 v)), GDecode (K1 R (Required 1 k))) => Decode (MapEntry k v) where
 instance (NFData k, NFData v) => NFData (MapEntry k v)
 
+deriving instance (Eq (Required 2 v), Eq (Required 1 k)) => Eq (MapEntry k v)
+deriving instance (Show (Required 2 v), Show (Required 1 k)) => Show (MapEntry k v)
+
 data A = A {
   _1 :: Required 1 (Value Float),
   _2 :: Required 2 (Value Float),
   _3 :: Required 3 (Value Float),
   _4 :: Required 4 (Value Float)
-  } deriving (Generic)
+  } deriving (Generic, Eq, Show)
 
 instance Encode A
 instance Decode A
@@ -38,7 +42,7 @@ instance NFData A
 
 data B = B {
   as :: Map 1 (Value Text) (Message A)
-} deriving (Generic)
+} deriving (Generic, Eq, Show)
 
 instance Encode B
 instance Decode B
@@ -46,7 +50,7 @@ instance NFData B
 
 data C = C {
   bs :: Map 1 (Value Text) (Message B)
-} deriving (Generic)
+} deriving (Generic, Eq, Show)
 
 instance Encode C
 instance Decode C
