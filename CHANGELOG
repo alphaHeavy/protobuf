@@ -1,3 +1,7 @@
+0.3.0.0:
+  - Fix #19: Improve performance by using binary
+  - Fix #4: Suspicious amount of time and allocation on decode path
+
 0.2.1.0:
   - Fix #17: Repeated n (Enumeration a) difficulty
 
