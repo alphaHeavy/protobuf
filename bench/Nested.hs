@@ -24,7 +24,7 @@ type Map n k v = Repeated n (Message (MapEntry k v))
 
 instance (GEncode (K1 R (Required 2 v)), GEncode (K1 R (Required 1 k))) => Encode (MapEntry k v) where
 instance (GDecode (K1 R (Required 2 v)), GDecode (K1 R (Required 1 k))) => Decode (MapEntry k v) where
-instance (NFData k, NFData v) => NFData (MapEntry k v)
+instance (NFData (Required 1 k), NFData (Required 2 v)) => NFData (MapEntry k v)
 
 deriving instance (Eq (Required 2 v), Eq (Required 1 k)) => Eq (MapEntry k v)
 deriving instance (Show (Required 2 v), Show (Required 1 k)) => Show (MapEntry k v)
