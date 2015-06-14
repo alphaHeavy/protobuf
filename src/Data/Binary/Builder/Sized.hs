@@ -31,7 +31,7 @@ fromByteString :: BS.ByteString -> Builder
 fromByteString s = Builder (BS.length s) $ B.byteString s
 
 fromLazyByteString :: LBS.ByteString -> Builder
-fromLazyByteString s = Builder (fromInteger $ toInteger $ LBS.length s) $ B.lazyByteString s
+fromLazyByteString s = Builder (fromIntegral $ LBS.length s) $ B.lazyByteString s
 
 putWord16be :: W.Word16 -> Builder
 putWord16be = Builder 2 . B.word16BE
