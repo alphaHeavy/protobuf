@@ -6,7 +6,7 @@
 -- and Google's reference implementation can be found at <http://code.google.com/p/protobuf/>.
 --
 -- It is intended to be used via "GHC.Generics" and does not require @ .proto @ files to function.
--- Tools are being developed that will convert a Haskell Protobuf definition into a @ .proto @ and vise versa.
+-- Tools are being developed that will convert a Haskell Protobuf definition into a @ .proto @ and vice versa.
 --
 -- Given a message definition:
 --
