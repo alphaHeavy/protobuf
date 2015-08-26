@@ -31,7 +31,7 @@ encodeMessage :: Encode a => a -> Put
 encodeMessage = encode
 
 -- |
--- Encode a Protocol Buffers message prefixed with a varint encoded 32-bit integer describing it's length.
+-- Encode a Protocol Buffers message prefixed with a varint encoded 32-bit integer describing its length.
 encodeLengthPrefixedMessage :: Encode a => a -> Put
 {-# INLINE encodeLengthPrefixedMessage #-}
 encodeLengthPrefixedMessage msg = do

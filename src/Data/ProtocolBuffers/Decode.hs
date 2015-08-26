@@ -46,7 +46,7 @@ decodeMessage = decode =<< HashMap.map reverse <$> go HashMap.empty where
       Nothing -> return msg
 
 -- |
--- Decode a Protocol Buffers message prefixed with a varint encoded 32-bit integer describing it's length.
+-- Decode a Protocol Buffers message prefixed with a varint encoded 32-bit integer describing its length.
 decodeLengthPrefixedMessage :: Decode a => Get a
 {-# INLINE decodeLengthPrefixedMessage #-}
 decodeLengthPrefixedMessage = do
