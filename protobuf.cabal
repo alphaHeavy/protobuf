@@ -47,6 +47,7 @@ library
     Data.ProtocolBuffers.Wire
   build-depends:
     base                       >= 4.7 && < 5,
+    base-orphans               >= 0.5,
     bytestring                 >= 0.9,
     binary                     >= 0.7,
     data-binary-ieee754        >= 0.4,
