@@ -5,6 +5,6 @@
 -- For more information reference the associated ticket:
 -- <https://github.com/alphaHeavy/protobuf/issues/3>
 
-module Data.ProtocolBuffers.Orphans (Foldable) where
+module Data.ProtocolBuffers.Orphans () where
 
 import Data.Orphans ()
