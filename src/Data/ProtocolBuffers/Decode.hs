@@ -120,7 +120,7 @@ instance (DecodeWire a, KnownNat n) => GDecode (K1 i (Field n (RequiredField (Al
   gdecode msg = fieldDecode Required msg
 
 instance (DecodeWire (PackedList a), KnownNat n) => GDecode (K1 i (Packed n a)) where
-  gdecode msg = fieldDecode PackedField msg
+  gdecode msg = fieldDecode PackedField msg <|> pure (K1 mempty)
 
 instance GDecode U1 where
   gdecode _ = return U1
