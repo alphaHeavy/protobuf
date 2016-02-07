@@ -71,6 +71,7 @@ tests = testGroup "Root"
   , testCase "Google Reference Test2" test2
   , testCase "Google Reference Test3" test3
   , testCase "Google Reference Test4" test4
+  , testCase "Packed empty fields" test4_empty
   , testCase "Optional Enum Test5: Nothing" test5
   , testCase "Optional Enum Test5: Just Test5A" test6
   , testCase "Optional Enum Test5: Just Test5B" test7
@@ -451,6 +452,10 @@ instance Decode Test4
 test4 :: Assertion
 test4 = testSpecific msg =<< unhex "2206038e029ea705" where
   msg = Test4{test4_d = putField [3,270,86942]}
+
+test4_empty :: Assertion
+test4_empty = testSpecific msg =<< unhex "" where
+  msg = Test4{test4_d = putField mempty}
 
 data Test5Enum = Test5A | Test5B deriving (Eq, Show, Enum)
 data Test5 = Test5{test5_e :: Optional 5 (Enumeration Test5Enum)} deriving (Generic, Eq, Show)
