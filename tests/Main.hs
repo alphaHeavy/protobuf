@@ -13,7 +13,7 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 import Test.QuickCheck
-import Test.QuickCheck.Property
+import Test.QuickCheck.Property hiding (testCase)
 import Test.Tasty
 import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck
