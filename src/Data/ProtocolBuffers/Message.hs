@@ -17,9 +17,10 @@ module Data.ProtocolBuffers.Message
 import Control.Applicative
 import Control.DeepSeq (NFData(..))
 import Data.Foldable
-import Data.Monoid
+import Data.Monoid hiding ((<>))
 import Data.Binary.Get
 import Data.Traversable
+import Data.Semigroup (Semigroup(..))
 
 import GHC.Generics
 import GHC.TypeLits
@@ -96,9 +97,12 @@ import qualified Data.ByteString.Lazy as LBS
 newtype Message m = Message {runMessage :: m}
   deriving (Eq, Foldable, Functor, Ord, Show, Traversable)
 
+instance (Generic m, GMessageMonoid (Rep m)) => Semigroup (Message m) where
+  Message x <> Message y = Message . to $ gmappend (from x) (from y)
+
 instance (Generic m, GMessageMonoid (Rep m)) => Monoid (Message m) where
   mempty = Message . to $ gmempty
-  Message x `mappend` Message y = Message . to $ gmappend (from x) (from y)
+  mappend = (<>)
 
 instance (Decode a, Monoid (Message a), KnownNat n) => GDecode (K1 i (Field n (RequiredField (Always (Message a))))) where
   gdecode = fieldDecode (Required . Always)
