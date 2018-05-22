@@ -4,13 +4,17 @@ import qualified Data.ByteString.Builder as B
 import Data.Monoid (mempty, mappend, Monoid)
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString as BS
+import Data.Semigroup (Semigroup, (<>))
 import qualified Data.Word as W
 
 data Builder = Builder {-# UNPACK #-} !Int B.Builder
 
+instance Semigroup Builder where
+  Builder i b <> Builder i' b' = Builder (i + i') (mappend b b')
+
 instance Monoid Builder where
   mempty = Builder 0 mempty
-  (Builder i b) `mappend` (Builder i' b') = Builder (i + i') (mappend b b')
+  mappend = (<>)
 
 toLazyByteString :: Builder -> LBS.ByteString
 toLazyByteString (Builder _ b) = B.toLazyByteString b
