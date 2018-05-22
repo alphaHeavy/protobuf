@@ -1,3 +1,6 @@
+0.2.1.2:
+- Fix #36: Compile on GHC >= 8.0
+
 0.2.1.1:
  - Fix #26: Import orphan Foldable Last instance from base-orphans
  - Fix #27: Fix failure when decoding empty [packed] fields
