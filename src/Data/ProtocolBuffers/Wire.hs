@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -89,8 +90,8 @@ putWireField (Fixed32Field   t val) = putWireTag t 5 >> putWord32le val
 putWireTag :: Tag -> Word32 -> Put
 putWireTag tag typ
   | tag <= 0x1FFFFFFF, typ <= 7 = putVarUInt $ tag `shiftL` 3 .|. (typ .&. 7)
-  | tag  > 0x1FFFFFFF = fail $ "Wire tag out of range: "  ++ show tag
-  | otherwise         = fail $ "Wire type out of range: " ++ show typ
+  | tag  > 0x1FFFFFFF = legacyFail $ "Wire tag out of range: "  ++ show tag
+  | otherwise         = legacyFail $ "Wire type out of range: " ++ show typ
 
 getVarInt :: (Integral a, Bits a) => Get a
 getVarInt = go 0 0 where
@@ -151,7 +152,7 @@ instance EncodeWire a => EncodeWire [Value a] where
 instance EncodeWire WireField where
   encodeWire t f
     | t == wireFieldTag f = putWireField f
-    | otherwise           = fail "Specified tag and field tag do not match"
+    | otherwise           = legacyFail "Specified tag and field tag do not match"
 
 instance DecodeWire WireField where
   decodeWire = pure
@@ -460,3 +461,10 @@ zzDecode32 :: Word32 -> Int32
 zzDecode32 w = fromIntegral (w `shiftR` 1) `xor` negate (fromIntegral (w .&. 1))
 zzDecode64 :: Word64 -> Int64
 zzDecode64 w = fromIntegral (w `shiftR` 1) `xor` negate (fromIntegral (w .&. 1))
+
+legacyFail :: Monad m => String -> m a
+#if __GLASGOW_HASKELL__ <= 710
+legacyFail = fail
+#else
+legacyFail = errorWithoutStackTrace
+#endif
