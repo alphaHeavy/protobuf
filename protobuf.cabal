@@ -1,5 +1,5 @@
 name:                protobuf
-version:             0.3.0.0
+version:             0.2.1.4
 synopsis:            Google Protocol Buffers via GHC.Generics
 description:
   Google Protocol Buffers via GHC.Generics.
@@ -55,12 +55,10 @@ library
     mtl                        == 2.*,
     -- pretty,
     text                       >= 0.10,
-    unordered-containers       >= 0.2
+    unordered-containers       >= 0.2,
+    semigroups                 >= 0.18
   ghc-options:
     -Wall
-
-  if impl(ghc < 8.0)
-    build-depends: semigroups == 0.18.*
 
 -- executable protoc-gen-hs
   -- default-language:
@@ -131,8 +129,6 @@ benchmark bench
     tagged,
     text,
     unordered-containers
-  ghc-options:
-    -O2
 
 source-repository head
   type:     git
