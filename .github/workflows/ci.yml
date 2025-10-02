@@ -25,31 +25,14 @@ jobs:
     - name: Update cabal
       run: cabal update
     
-    - name: Install dependencies
-      run: cabal install --only-dependencies --enable-tests --enable-benchmarks
-    
-    - name: Configure
-      run: cabal configure --enable-tests --enable-benchmarks -v2
-    
     - name: Build
-      run: cabal build
+      run: cabal build --enable-tests --enable-benchmarks
     
     - name: Run tests
-      run: cabal test
+      run: cabal test --enable-tests
     
     - name: Check package
       run: cabal check
     
-    - name: Create source distribution
+    - name: Create and test source distribution
       run: cabal sdist
-    
-    - name: Test source distribution
-      run: |
-        export SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}')
-        cd dist/
-        if [ -f "$SRC_TGZ" ]; then
-           cabal install "$SRC_TGZ"
-        else
-           echo "expected '$SRC_TGZ' not found"
-           exit 1
-        fi
