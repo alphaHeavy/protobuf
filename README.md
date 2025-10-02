@@ -3,4 +3,4 @@ protobuf
 
 An implementation of Google's Protocol Buffers in Haskell.
 
-[![Build Status](https://travis-ci.org/alphaHeavy/protobuf.png?branch=master)](https://travis-ci.org/alphaHeavy/protobuf)
+[![CI](https://github.com/alphaHeavy/protobuf/actions/workflows/ci.yml/badge.svg)](https://github.com/alphaHeavy/protobuf/actions/workflows/ci.yml)

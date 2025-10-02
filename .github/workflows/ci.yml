@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ghc: ['7.8.4', '7.10.1', '8.0.1', '8.2.2', '8.4.2']
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Haskell
+      uses: haskell-actions/setup@v2
+      with:
+        ghc-version: ${{ matrix.ghc }}
+        cabal-version: '1.24'
+    
+    - name: Update cabal
+      run: cabal update
+    
+    - name: Install dependencies
+      run: cabal install --only-dependencies --enable-tests --enable-benchmarks
+    
+    - name: Configure
+      run: cabal configure --enable-tests --enable-benchmarks -v2
+    
+    - name: Build
+      run: cabal build
+    
+    - name: Run tests
+      run: cabal test
+    
+    - name: Check package
+      run: cabal check
+    
+    - name: Create source distribution
+      run: cabal sdist
+    
+    - name: Test source distribution
+      run: |
+        export SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}')
+        cd dist/
+        if [ -f "$SRC_TGZ" ]; then
+           cabal install "$SRC_TGZ"
+        else
+           echo "expected '$SRC_TGZ' not found"
+           exit 1
+        fi
