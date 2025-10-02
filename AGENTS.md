@@ -1,4 +1,4 @@
-# GitHub Copilot Instructions for protobuf
+# AI Agent Instructions for protobuf
 
 ## Repository Overview
 
