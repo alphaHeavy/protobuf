@@ -50,7 +50,6 @@ library
     base-orphans               >= 0.5,
     bytestring                 >= 0.9,
     binary                     >= 0.7,
-    data-binary-ieee754        >= 0.4,
     deepseq                    >= 1.1,
     mtl                        == 2.*,
     -- pretty,
