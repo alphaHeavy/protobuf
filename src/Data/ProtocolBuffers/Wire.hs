@@ -34,7 +34,7 @@ import Data.Foldable
 import Data.Int
 import Data.Monoid
 import Data.Binary.Get
-import qualified Data.Binary.IEEE754 as F
+import GHC.Float (castFloatToWord32, castWord32ToFloat, castDoubleToWord64, castWord64ToDouble)
 import Data.Binary.Builder.Sized hiding (empty)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
@@ -60,10 +60,16 @@ data WireField
     deriving (Eq, Ord, Show, Typeable)
 
 putFloat32le :: Float -> Builder
-putFloat32le = putWord32le . F.floatToWord
+putFloat32le = putWord32le . castFloatToWord32
 
 putFloat64le :: Double -> Builder
-putFloat64le = putWord64le . F.doubleToWord
+putFloat64le = putWord64le . castDoubleToWord64
+
+getFloat32le :: Get Float
+getFloat32le = castWord32ToFloat <$> getWord32le
+
+getFloat64le :: Get Double
+getFloat64le = castWord64ToDouble <$> getWord64le
 
 getVarintPrefixedBS :: Get ByteString
 getVarintPrefixedBS = getByteString =<< getVarInt
@@ -255,14 +261,14 @@ instance EncodeWire Float where
   encodeWire t val = putWireTag t 5 <> putFloat32le val
 
 instance DecodeWire Float where
-  decodeWire (Fixed32Field _ val) = pure $ F.wordToFloat val
+  decodeWire (Fixed32Field _ val) = pure $ castWord32ToFloat val
   decodeWire _ = empty
 
 instance EncodeWire Double where
   encodeWire t val = putWireTag t 1 <> putFloat64le val
 
 instance DecodeWire Double where
-  decodeWire (Fixed64Field _ val) = pure $ F.wordToDouble val
+  decodeWire (Fixed64Field _ val) = pure $ castWord64ToDouble val
   decodeWire _ = empty
 
 instance EncodeWire Builder where
@@ -409,7 +415,7 @@ instance EncodeWire (PackedList (Value Float)) where
 
 instance DecodeWire (PackedList (Value Float)) where
   decodeWire x = do
-    xs <- decodePackedList F.getFloat32le x
+    xs <- decodePackedList getFloat32le x
     return . PackedList $ Value <$> xs
 
 instance EncodeWire (PackedList (Value Double)) where
@@ -418,7 +424,7 @@ instance EncodeWire (PackedList (Value Double)) where
 
 instance DecodeWire (PackedList (Value Double)) where
   decodeWire x = do
-    xs <- decodePackedList F.getFloat64le x
+    xs <- decodePackedList getFloat64le x
     return . PackedList $ Value <$> xs
 
 instance EncodeWire (PackedList (Value Bool)) where
