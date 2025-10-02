@@ -208,7 +208,7 @@ instance (DecodeWire a, KnownNat n) => Decode (RepeatedValue n a)
 arbitraryField :: forall r . Int -> (forall a . (Monoid a, GEncode (K1 R a), GDecode (K1 R a), Eq a, Show a) => a -> Gen r) -> Gen r
 arbitraryField i f =
   case someNatVal (fromIntegral i) of
-    Nothing -> fail $ "someNatVal failed for " ++ show i
+    Nothing -> error $ "someNatVal failed for " ++ show i
     Just (SomeNat (n :: Proxy n)) -> do
       flavor <- choose (1, 3)
       case flavor :: Int of
@@ -307,7 +307,7 @@ prop_wire _ = label ("prop_wire :: " ++ show (typeOf (undefined :: a))) $ do
         decodeWire field
   case runGetOrFail dec bs of
     Right (_, _, val') -> return $ val == val'
-    Left (_, _, err)   -> fail err
+    Left (_, _, err)   -> error err
 
 prop_generic :: Gen Property
 prop_generic = do
@@ -320,7 +320,7 @@ prop_generic_length_prefixed = do
   let bs = toLazyByteString $ encodeLengthPrefixedMessage (msg :: HashMap Tag [WireField])
   case runGetOrFail decodeLengthPrefixedMessage bs of
     Right (_, _, msg') -> return $ counterexample "foo" $ msg == msg'
-    Left (_, _, err)   -> fail err
+    Left (_, _, err)   -> return $ counterexample err False
 
 prop_roundtrip_msg :: (Eq a, Encode a, Decode a) => a -> Gen Property
 prop_roundtrip_msg msg = do
@@ -407,6 +407,11 @@ prop_opt _ = label ("prop_opt :: " ++ show (typeOf (undefined :: a))) $ do
   val <- arbitrary
   prop_opt_reify (val :: Maybe a) prop_roundtrip_msg
 
+-- Helper to convert Either String to IO
+fromEitherFail :: Either String a -> IO a
+fromEitherFail (Right x) = return x
+fromEitherFail (Left err) = assertFailure err
+
 -- implement the examples from https://developers.google.com/protocol-buffers/docs/encoding
 testSpecific :: (Eq a, Show a, Encode a, Decode a) => a -> B.ByteString -> IO ()
 testSpecific msg ref = do
@@ -424,7 +429,7 @@ instance Encode Test1
 instance Decode Test1
 
 test1 :: Assertion
-test1 = testSpecific msg =<< unhex "089601" where
+test1 = fromEitherFail (unhex "089601") >>= testSpecific msg where
   msg = Test1{test1_a = putField 150}
 
 data Test2 = Test2{test2_b :: Required 2 (Value Text)} deriving (Generic)
@@ -434,7 +439,7 @@ instance Encode Test2
 instance Decode Test2
 
 test2 :: Assertion
-test2 = testSpecific msg =<< unhex "120774657374696e67" where
+test2 = fromEitherFail (unhex "120774657374696e67") >>= testSpecific msg where
   msg = Test2{test2_b = putField "testing"}
 
 data Test3 = Test3{test3_c :: Required 3 (Message Test1)} deriving (Generic, Eq, Show)
@@ -442,7 +447,7 @@ instance Encode Test3
 instance Decode Test3
 
 test3 :: Assertion
-test3 = testSpecific msg =<< unhex "1a03089601" where
+test3 = fromEitherFail (unhex "1a03089601") >>= testSpecific msg where
   msg = Test3{test3_c = putField Test1{test1_a = putField 150}}
 
 data Test4 = Test4{test4_d :: Packed 4 (Value Word32)} deriving (Generic, Eq, Show)
@@ -450,11 +455,11 @@ instance Encode Test4
 instance Decode Test4
 
 test4 :: Assertion
-test4 = testSpecific msg =<< unhex "2206038e029ea705" where
+test4 = fromEitherFail (unhex "2206038e029ea705") >>= testSpecific msg where
   msg = Test4{test4_d = putField [3,270,86942]}
 
 test4_empty :: Assertion
-test4_empty = testSpecific msg =<< unhex "" where
+test4_empty = fromEitherFail (unhex "") >>= testSpecific msg where
   msg = Test4{test4_d = putField mempty}
 
 data Test5Enum = Test5A | Test5B deriving (Eq, Show, Enum)
@@ -473,47 +478,47 @@ instance Encode Test7
 instance Decode Test7
 
 test5 :: Assertion
-test5 = testSpecific msg =<< unhex "" where
+test5 = fromEitherFail (unhex "") >>= testSpecific msg where
   msg = Test5{test5_e = putField Nothing}
 
 test6 :: Assertion
-test6 = testSpecific msg =<< unhex "2800" where
+test6 = fromEitherFail (unhex "2800") >>= testSpecific msg where
   msg = Test5{test5_e = putField $ Just Test5A }
 
 test7 :: Assertion
-test7 = testSpecific msg =<< unhex "2801" where
+test7 = fromEitherFail (unhex "2801") >>= testSpecific msg where
   msg = Test5{test5_e = putField $ Just Test5B }
 
 test8 :: Assertion
-test8 = testSpecific msg =<< unhex "" where
+test8 = fromEitherFail (unhex "") >>= testSpecific msg where
   msg = Test6{test6_e = putField $ [] }
 
 test9 :: Assertion
-test9 = testSpecific msg =<< unhex "3000" where
+test9 = fromEitherFail (unhex "3000") >>= testSpecific msg where
   msg = Test6{test6_e = putField $ [Test6A] }
 
 test10 :: Assertion
-test10 = testSpecific msg =<< unhex "30003001" where
+test10 = fromEitherFail (unhex "30003001") >>= testSpecific msg where
   msg = Test6{test6_e = putField $ [Test6A, Test6B]}
 
 test11 :: Assertion
-test11 = testSpecific msg =<< unhex "30003000" where
+test11 = fromEitherFail (unhex "30003000") >>= testSpecific msg where
   msg = Test6{test6_e = putField $ [Test6A, Test6A]}
 
 test12 :: Assertion
-test12 = testSpecific msg =<< unhex "300030013000" where
+test12 = fromEitherFail (unhex "300030013000") >>= testSpecific msg where
   msg = Test6{test6_e = putField $ [Test6A, Test6B, Test6A]}
 
 test13 :: Assertion
-test13 = testSpecific msg =<< unhex "" where
+test13 = fromEitherFail (unhex "") >>= testSpecific msg where
   msg = Test7{test7_e = putField $ [] }
 
 test14 :: Assertion
-test14 = testSpecific msg =<< unhex "3800" where
+test14 = fromEitherFail (unhex "3800") >>= testSpecific msg where
   msg = Test7{test7_e = putField $ [Test7A] }
 
 test15 :: Assertion
-test15 = testSpecific msg =<< unhex "38003800" where
+test15 = fromEitherFail (unhex "38003800") >>= testSpecific msg where
   msg = Test7{test7_e = putField $ [Test7A, Test7A] }
 
 -- some from http://code.google.com/p/protobuf/source/browse/trunk/src/google/protobuf/wire_format_unittest.cc
